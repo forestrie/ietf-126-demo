@@ -1,0 +1,25 @@
+# --- secrets & environment (NEVER commit) ---
+.env
+.env.secret
+demo.env
+
+# --- private keys (ES256 PKCS#8 PEMs) ---
+*.pem
+
+# --- built CLI binary + backups ---
+/forestrie
+*.bak
+
+# --- generated artifacts (fresh every run) ---
+# deploy record, onboarding body, grants, statements, receipts
+*.json
+*.b64
+*.cbor
+*.cose
+
+# --- fetched merkle-log data ---
+*.log
+*.sth
+
+# --- scratch ---
+/tmp/
