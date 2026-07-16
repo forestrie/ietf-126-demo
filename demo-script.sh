@@ -142,12 +142,15 @@ export ALICE_ENTRY_ID=$(echo "$AR" | grep -oE 'entries/[0-9a-f]{32}/receipt' | h
 retry fetch_and_receipt "$ALICE_DATA_LOG_ID" "$ALICE_ENTRY_ID" "$S/adata"
 echo "Alice's statement is registered under David's SCITT grant and self-servable: $S/adata/receipt.cbor"
 
-# NOTE (tested 2026-07-16): offline `forestrie verify` / `verify-grant` of a
-# CHILD-log receipt currently fails `signature: delegation_invalid`. A child
-# log's checkpoint is sealed under a delegation signed by the child key holder
-# (here Alice), which does not chain to the ROOT genesis the verifier resolves
-# against — hierarchical delegation resolution is not yet implemented (FOR-297).
-# The root-log closer (Slide 7) verifies cleanly. See README "Known limitation".
+# 5. The child-log closer: CHAIN-ANCHORED verify. The peak is recomputed locally
+#    from Alice's statement + the receipt's proof path and matched against the
+#    data log's own on-chain accumulator — the checkpoint signature is
+#    externalised to univocity. (Purely-offline verify of a child-log receipt
+#    still requires the FOR-297 multi-hop grant-chain resolver; the on-chain
+#    anchor IS the split-view authority, so this closer is the stronger claim.)
+./forestrie verify --genesis "$GENESIS" --receipt "$S/adata/receipt.cbor" \
+  --payload "$S/alice.cose" --entry-id "$ALICE_ENTRY_ID" \
+  --univocity "$UNIVOCITY_ADDRESS" --log-id "$ALICE_DATA_LOG_ID" --rpc-url "$RPC_URL"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # SLIDE 7 — Roundup: the closer (same verify as Slide 2, still true)

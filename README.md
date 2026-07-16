@@ -71,30 +71,33 @@ captured). Cut to **Terminal** for each live demo, back to **Slides** to narrate
 | 3 Self-serve | derive the same receipt from the public tile | ✅ pass |
 | 4 Throughput | 100 statements → one checkpoint → 100 offline receipts | ✅ pass (100/100) |
 | 5 Split-view | throwaway deploy + on-chain `bootstrapConfig` | ✅ pass |
-| 6 Log creation | build auth→data hierarchy, Alice writes, self-serve her receipt | ⚠️ builds + writes; child verify blocked (below) |
+| 6 Log creation | build auth→data hierarchy, Alice writes, self-serve + **chain-anchored verify** her receipt | ✅ pass (chain-anchored closer) |
 | 7 Roundup | the root-log closer | ✅ pass |
 
-### Known limitation — hierarchical offline verify
+### Child-log verification — chain-anchored (shipped) vs offline (in flight)
 
-Offline `forestrie verify` / `verify-grant` of a **child-log** receipt currently
-fails `signature: delegation_invalid`. Root-log receipts verify cleanly. For
-Slide 6 the demo therefore **builds the hierarchy, has Alice write, and self-
-serves her receipt** (all tested) — it does not offline-verify the child receipt.
+A **child-log** receipt is sealed under a per-log delegation signed by the child
+key holder (Alice for her data log), which does not chain to the root genesis —
+so purely-offline `verify`/`verify-grant` fails `signature: delegation_invalid`
+(the offline library resolves the label-1000 cert against the genesis key only,
+one hop; the server resolves per-log keys via `logSigningKey(ownerLogId)`).
 
-**Root cause (a library gap, not a hierarchy failing):** the offline verifier
-has a *single* trust anchor — the genesis bootstrap key (`decodeTrustRootFrom
-Genesis`) — and `resolveDelegatedVerifyKey` accepts a checkpoint's label-1000
-delegation certificate only if it is signed **directly** by that key (one hop).
-A child log's cert is signed by the child key holder (Alice), so it is rejected.
-The **server** (`canopy-api/src/env/receipt-authority-resolver.ts`) verifies
-child receipts fine because it resolves the *per-log* authorized signing key via
-`client.logSigningKey(ownerLogId)` — a coordinator/custodian trust-root lookup
-the offline library has no equivalent of. The authority chain itself is complete
-and offline-checkable (genesis → auth grant [root-signed] → data grant [David-
-signed, grantData=Alice] → Alice's per-log delegation cert), so the fix is a
-**multi-hop resolver** in `@forestrie/receipt-verify` (walk + verify the grant
-chain to genesis) plus CLI plumbing to supply/auto-fetch the intermediate grants
-(they are publicly self-servable). Tracked under FOR-297.
+**Shipped (FOR-297 approach C, 2026-07-16):** in chain-anchored mode
+(`verify … --univocity --log-id <child> --rpc-url`) the CLI recomputes the peak
+locally from the leaf commitment (`SHA-256(idtimestamp ‖ SHA-256(payload))`) and
+the receipt's proof path — **no signature involved** — and byte-matches it
+against the child log's own on-chain `logState` accumulator. Univocity anchors
+every log independently, so the anchor match proves binding + inclusion under
+the contract's consistency-gated state; the signature row reports
+`skipped … externalised to the on-chain accumulator`. A forged payload or
+tampered path recomputes a different peak and cannot anchor (tested live, both
+directions). This is the Slide 6 closer.
+
+**Still open (FOR-297 approach A):** purely-offline child verify needs the
+multi-hop grant-chain resolver in `@forestrie/receipt-verify` (walk genesis →
+auth grant [root-signed] → data grant [David-signed, grantData=Alice] → Alice's
+delegation cert; every link is a self-servable receipted leaf) plus CLI plumbing
+for the intermediate grants.
 
 Corollaries learned while validating Slide 6, baked into `demo-script.sh`:
 - A data-log **create+extend** grant names its writer in `grantData` — that grant
