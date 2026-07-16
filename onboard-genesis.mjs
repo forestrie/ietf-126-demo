@@ -2,19 +2,19 @@
 // 1. mint a payments-onboard token from the ops-admin token
 // 2. build the genesis CBOR (current private labels, deterministic order)
 // 3. POST it with the minted token (+ webhookUrl -> coordinator signing-route)
-// Env: FORESTRIE_BASE_URL, CANOPY_OPS_ADMIN_TOKEN, BOOTSTRAP_LOG_ID,
-//      UNIVOCITY_ADDRESS, CHAIN_ID, DELEGATION_COORDINATOR_URL, BOOTSTRAP_PEM
+// Env: FORESTRIE_BASE_URL, CANOPY_OPS_ADMIN_TOKEN, ROBERT_LOG_ID,
+//      UNIVOCITY_ADDRESS, CHAIN_ID, DELEGATION_COORDINATOR_URL, ROBERT_PEM
 // Set BODY_ONLY=1 to only (re)write genesis-body.cbor and exit (offline check).
 import { readFileSync, writeFileSync } from "node:fs";
 import { createPublicKey } from "node:crypto";
 
 const API = process.env.FORESTRIE_BASE_URL;
 const OPS = (process.env.CANOPY_OPS_ADMIN_TOKEN || "").trim();
-const LOG_ID = process.env.BOOTSTRAP_LOG_ID;
+const LOG_ID = process.env.ROBERT_LOG_ID;
 const UNIV = process.env.UNIVOCITY_ADDRESS.replace(/^0x/, "").toLowerCase();
 const CHAIN = String(process.env.CHAIN_ID);
 const COORD = process.env.DELEGATION_COORDINATOR_URL;
-const PEM = readFileSync(process.env.BOOTSTRAP_PEM, "utf8");
+const PEM = readFileSync(process.env.ROBERT_PEM, "utf8");
 
 // x||y (64 bytes) from the bootstrap ES256 public key.
 const jwk = createPublicKey({ key: PEM, format: "pem" }).export({ format: "jwk" });

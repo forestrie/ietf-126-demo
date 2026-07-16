@@ -34,7 +34,7 @@ export CHAIN_ID=84532
 export DELEGATION_COORDINATOR_URL="https://coordinator-a.forest-2.forestrie.dev"
 export PINNED_REGISTRAR_KEY="z1YarLKXrsRe5egrwrFfbeYadd9lOqplKxbRuMGymHUOSY7YAfdOhhPWb3H72TrPMiMLw0CBMpDPXUGMEvbkOQ=="
 export OWNER_ADDRESS="0xdA30dB778C4aAE42BfAE2e81d4b12dEb0725F98C"   # must match DEPLOYER_KEY
-export BOOTSTRAP_PEM="./bootstrap.es256.pem"
+export ROBERT_PEM="./robert.es256.pem"
 export DAVID_PEM="./david.es256.pem"
 export ALICE_PEM="./alice.es256.pem"
 export BOB_PEM="./bob.es256.pem"
@@ -53,11 +53,11 @@ done
 # --- R1: deploy a fresh univocity instance (fresh bootstrap key) ---
 step "R1 — deploy univocity + generate bootstrap key (on-chain, Base Sepolia)"
 ./forestrie deploy --bootstrap-alg es256 \
-  --bootstrap-es256-generate --bootstrap-es256-pem-out "$BOOTSTRAP_PEM" \
+  --bootstrap-es256-generate --bootstrap-es256-pem-out "$ROBERT_PEM" \
   --owner-address "$OWNER_ADDRESS" --deployer-key "$DEPLOYER_KEY" \
   --rpc-url "$RPC_URL" --out deployment.json
 export UNIVOCITY_ADDRESS=$(jq -r .imutableUnivocity deployment.json)
-export BOOTSTRAP_LOG_ID=$(jq -r .genesisLogId deployment.json)
+export ROBERT_LOG_ID=$(jq -r .genesisLogId deployment.json)
 # deployment.json carries the txHash but not the block; resolve the deploy block
 # from the receipt (portable — curl + jq only) so the Step-5 on-chain event
 # query (fromBlock) works.
@@ -70,7 +70,7 @@ if [ -n "$DEPLOY_BLOCK_HEX" ] && [ "$DEPLOY_BLOCK_HEX" != "null" ]; then
 else
   export DEPLOY_BLOCK=""
 fi
-echo "  univocity=$UNIVOCITY_ADDRESS  logId=$BOOTSTRAP_LOG_ID  block=${DEPLOY_BLOCK:-<unresolved>}"
+echo "  univocity=$UNIVOCITY_ADDRESS  logId=$ROBERT_LOG_ID  block=${DEPLOY_BLOCK:-<unresolved>}"
 
 # --- R2: operator onboarding of the root genesis ---
 step "R2 — onboard the root genesis (mint onboard token + POST genesis)"
@@ -78,20 +78,20 @@ node onboard-genesis.mjs
 
 # --- R3: fetch + cache the public genesis (offline trust root forever after) ---
 step "R3 — fetch + cache genesis.cbor"
-curl -fsS -o genesis.cbor "$FORESTRIE_BASE_URL/api/forest/$BOOTSTRAP_LOG_ID/genesis"
+curl -fsS -o genesis.cbor "$FORESTRIE_BASE_URL/api/forest/$ROBERT_LOG_ID/genesis"
 echo "  wrote genesis.cbor ($(wc -c < genesis.cbor | tr -d ' ') bytes)"
 
 # --- R4: pre-delegate root sealing (before the first write) ---
 step "R4 — pre-delegate root sealing to the vouched standing sealer key"
 ./forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
-  --log-id "$BOOTSTRAP_LOG_ID" --sign-with "$BOOTSTRAP_PEM" \
+  --log-id "$ROBERT_LOG_ID" --sign-with "$ROBERT_PEM" \
   --pinned-registrar-key "$PINNED_REGISTRAR_KEY"
 
 # --- R5: mint the self-referential root grant ---
 step "R5 — mint the self-referential root grant"
 ./forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
-  --owner-log "$BOOTSTRAP_LOG_ID" --new-log "$BOOTSTRAP_LOG_ID" \
-  --sign-with "$BOOTSTRAP_PEM" --self-referential --out-b64 root-grant.b64
+  --owner-log "$ROBERT_LOG_ID" --new-log "$ROBERT_LOG_ID" \
+  --sign-with "$ROBERT_PEM" --self-referential --out-b64 root-grant.b64
 export ROOT_GRANT_B64=$(cat root-grant.b64)
 
 # --- write demo.env (secret-free; safe to leave on disk) ---
@@ -103,12 +103,12 @@ export RPC_URL="$RPC_URL"
 export CHAIN_ID=$CHAIN_ID
 export DELEGATION_COORDINATOR_URL="$DELEGATION_COORDINATOR_URL"
 export PINNED_REGISTRAR_KEY="$PINNED_REGISTRAR_KEY"
-export BOOTSTRAP_PEM="$BOOTSTRAP_PEM"
+export ROBERT_PEM="$ROBERT_PEM"
 export DAVID_PEM="$DAVID_PEM"
 export ALICE_PEM="$ALICE_PEM"
 export BOB_PEM="$BOB_PEM"
 export UNIVOCITY_ADDRESS="$UNIVOCITY_ADDRESS"
-export BOOTSTRAP_LOG_ID="$BOOTSTRAP_LOG_ID"
+export ROBERT_LOG_ID="$ROBERT_LOG_ID"
 export DEPLOY_BLOCK="$DEPLOY_BLOCK"
 export ROOT_GRANT_B64="$ROOT_GRANT_B64"
 export GRANT_B64="$ROOT_GRANT_B64"
@@ -127,10 +127,10 @@ Start the demo:
 Step 1 — register a signed statement and verify it offline:
 
   echo '{"claim":"hello scitt wg"}' > statement.json
-  ./forestrie sign-statement --key "$BOOTSTRAP_PEM" --payload statement.json \
+  ./forestrie sign-statement --key "$ROBERT_PEM" --payload statement.json \
       --content-type application/json --out statement.cose
   REG=$(./forestrie register --base-url "$FORESTRIE_BASE_URL" \
-      --log-id "$BOOTSTRAP_LOG_ID" --statement statement.cose \
+      --log-id "$ROBERT_LOG_ID" --statement statement.cose \
       --grant-b64 "$ROOT_GRANT_B64" --out receipt.cbor 2>&1); echo "$REG"
   ENTRY_ID=$(echo "$REG" | grep -oE 'entries/[0-9a-f]{32}/receipt' | head -1 | grep -oE '[0-9a-f]{32}')
   ./forestrie verify --genesis genesis.cbor --receipt receipt.cbor \

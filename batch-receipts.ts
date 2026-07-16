@@ -16,9 +16,9 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const N = Number(process.env.N ?? "20");
 const BASE = process.env.FORESTRIE_BASE_URL!;
-// The demo's root log (preflight/demo.env export it as BOOTSTRAP_LOG_ID).
-const ROOT = (process.env.BOOTSTRAP_LOG_ID ?? process.env.ROOT_LOG_ID)!;
-const PEM = process.env.BOOTSTRAP_PEM ?? "./bootstrap.es256.pem";
+// The demo's root log (preflight/demo.env export it as ROBERT_LOG_ID).
+const ROOT = (process.env.ROBERT_LOG_ID ?? process.env.ROOT_LOG_ID)!;
+const PEM = process.env.ROBERT_PEM ?? "./robert.es256.pem";
 // Completed root grant: prefer the env (demo.env sets ROOT_GRANT_B64/GRANT_B64),
 // else read the file preflight/create-log wrote.
 const GRANT = (
