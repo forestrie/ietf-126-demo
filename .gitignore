@@ -1,25 +1,31 @@
-# --- secrets & environment (NEVER commit) ---
-.env
-.env.secret
-demo.env
+# runtime + build output (all generated state lives here)
+# .output/ = preflight + per-slide demo state (shared/, slide-N/)
+# dist/    = marp deck build (deck.md, index.html, deck.pdf, themes/)
+.output/
+dist/
+node_modules/
 
-# --- private keys (ES256 PKCS#8 PEMs) ---
-*.pem
-
-# --- built CLI binary + backups ---
+# built CLI binary + backups
 /forestrie
 *.bak
 
-# --- generated artifacts (fresh every run) ---
-# deploy record, onboarding body, grants, statements, receipts
-*.json
-*.b64
-*.cbor
-*.cose
+# secrets / private keys, wherever they land
+.env
+.env.secret
+*.pem
 
-# --- fetched merkle-log data ---
-*.log
-*.sth
-
-# --- scratch ---
+# stale artifacts from pre-.output/ runs (belt-and-suspenders)
+/demo.env
+/deployment.json
+/genesis.cbor
+/genesis-body.cbor
+/root-grant.b64
+/statement.json
+/statement.cose
+/receipt.cbor
+/*.cbor
+/*.cose
+/*.b64
+/*.sth
+/*.log
 /tmp/

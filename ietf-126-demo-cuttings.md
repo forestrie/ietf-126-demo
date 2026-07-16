@@ -1,137 +1,3 @@
-## Forestrie
-
-Forestrie is a Transparency Service offering a SCRAPI interface for registering
-SCITT signed statements  and obtaing COSE-Receipts based on the
-draft-bryce-cose-receipts-mmr-profile ID
-
-## The Forestrie TS is a "pipe" not a "store".
-
-Checkpoint publishing is permissionless and requires only an mmr-profile signed
-consistency proof from the logs owner.
-
-Split-view protection and checkpoint publishing authority for logs is provided
-by an independently provisioned smart contract. Chain of choice, no particular
-EVM is favoured.
-
-The contract deployer has no special privilages, the "root" log is declared at deployment time.
-The root log owner only has authority to publish checkpoint for its own log and is not special
-in any other way.
-
-Log owners are free to exit to other TS operators at any time and retain the
-ability to continue publishing checkpoints independently.
-
-## Async registration
-
-The affordances of the mmr-profile decouple receipt production from statement
-registration.
-
-Receipts can be self-asembled, offline, for any entry given only a published checkpoint.
-
-Typically this only requires access to the "head" tile and the latest published
-checkpoint.
-
-1000's of complete registrations per second, including receipts, can be
-amortized by a single checkpoint fetch. Typical latency 1-3 seconds for a
-checkpoint that enables self local assembly of 1000's of receipts.
-
-
-
-# IETF 126 — Forestrie demo
-
-Forestrie is a Transparency Service offering a SCRAPI interface for registering
-SCITT signed statements and obtaing [MMR-profile draft COSE
-Receipts](https://github.com/robinbryce/draft-bryce-cose-receipts-mmr-profile/blob/main/draft-bryce-cose-receipts-mmr-profile.md)
-
-
-## Setup (run before the talk)
-
-`preflight.sh` stands up a fresh forest (deploy → onboard genesis → fetch
-genesis → delegate root sealing → mint the root grant) and writes a secret-free
-`demo.env`. Run it once, then `source demo.env` so every command below has
-`FORESTRIE_BASE_URL`, `ROBERT_LOG_ID`, `ROBERT_PEM`, `ROOT_GRANT_B64`,
-`PINNED_REGISTRAR_KEY`, the persona PEMs, etc. in the environment:
-
-```bash
-./preflight.sh          # ~1 min: deploys + provisions a fresh forest on Base Sepolia
-source demo.env
-```
-
-Secrets (the ops-admin token and the gas-paying deployer key) are pulled from
-Doppler at runtime by `preflight.sh`; they are never written to `demo.env` or to
-disk.
-
-## Publishing a signed statement
-
-```bash
-source demo.env
-
-echo '{"claim":"hello scitt wg"}' > statement.json
-
-./forestrie sign-statement --key "$ROBERT_PEM" --payload statement.json \
-      --content-type application/json --out statement.cose
-
-REG=$(./forestrie register --base-url "$FORESTRIE_BASE_URL" \
-      --log-id "$ROBERT_LOG_ID" --statement statement.cose \
-      --grant-b64 "$ROOT_GRANT_B64" --out receipt.cbor 2>&1); echo "$REG"
-
-ENTRY_ID=$(echo "$REG" | grep -oE 'entries/[0-9a-f]{32}/receipt' | head -1 | grep -oE '[0-9a-f]{32}')
-
-./forestrie verify --genesis genesis.cbor --receipt receipt.cbor \
-      --payload statement.cose --entry-id "$ENTRY_ID"
-
-```
-
-* Create the statement and sign it using the log owners key producing
-`statement.cose`
-
-* Register the statement on the Forestrie TS
-  --log-id is the log to register on
-  --grant-b64 is the authorization for the statement signer to publish to the log ( more on this later)
-  --base-url is where the forestrie operator SCRAPI register-sgined-statement
-is hosted
-
-* Verify the receipt
-  --genesis genesis.cbor is the registration document for the log, obtained
-when the log is registered with the forestrie operator (not necessary for
-receipt verification, just convenient)
-  --receipt COSE-Receipt draft-bryce-mmr-profile reciept
-  --payload the exact bytes that were registered (the leaf commits
-`SHA-256(payload)`); this is the generic, SCITT-compatible verify
-  --entry-id the SCRAPI entry-id for the log entry
-
-A property of the mmr-profile means that receipts can be self-created from a
-published checkpoint, and verified off line.
-
-Access to the single tile data containing the leaf (or leaves) of interest is the only requirement. Forestrie publishes tiles imediately and publicly
-
-```bash
-# Self-create the SAME receipt offline from the public head tile + checkpoint —
-# no operator round-trip. LOG_STORE_URL is the public read-only R2 origin.
-export LOG_STORE_URL="https://pub-d7bc2e23615b4cd1a80a0944c3cd3507.r2.dev"
-export MASSIF_H=14 MASSIF_IDX=0000000000000000
-
-curl -sS "$LOG_STORE_URL/v2/merklelog/massifs/$MASSIF_H/$ROBERT_LOG_ID/$MASSIF_IDX.log"  -o massif.log
-curl -sS "$LOG_STORE_URL/v2/merklelog/checkpoints/$MASSIF_H/$ROBERT_LOG_ID/$MASSIF_IDX.sth" -o checkpoint.sth
-
-./forestrie create-receipt --massif massif.log --checkpoint checkpoint.sth \
-      --entry-id "$ENTRY_ID" --out receipt.selfserve.cbor
-
-# Byte-identical to the API-issued receipt; verifies with the same command.
-./forestrie verify --genesis genesis.cbor --receipt receipt.selfserve.cbor \
-      --payload statement.cose --entry-id "$ENTRY_ID"
-```
-
-
-## The Forestrie TS is a "pipe" not a "store".
-
-Granting publishing authority to the forestrie opoerator
-
-The forestrie operator publishes checkpoints on behalf of log owners.
-
-The forestrie operator signs a voucher for its sealer ahead of time, enabling
-log owners to pre-submit a checkpoint publishing grant.
-
-
 The log owner verifies the voucher against its copy of the --pinned-registry-key for the forestrie operator
 
 ```bash
@@ -335,24 +201,13 @@ ONE checkpoint now covers all 100 after ~2.5s
 derived 100/100 receipts OFFLINE (zero operator calls) in <1s
 ```
 
-## Roundup
+## The Forestrie TS is a "pipe" not a "store".
 
-Forestrie is a pipe not a store.
-Your split view protection is owned by you.
-You can switch operator any time you like.
-Receipts can be self assembled off line with minimal effort by *any* party.
-The data required to guarantee receipt availability is easily replicable.
+Granting publishing authority to the forestrie operator
 
-The split view protoection is not dependent on the log operator.
-The Univocity heirarchical grant model gives you control over log creation and
-statement registration without relying on operators.
+The forestrie operator publishes checkpoints on behalf of log owners.
 
-The mmr-profile of COSE-Receipts is the enabler.
+The forestrie operator signs a voucher for its sealer ahead of time, enabling
+log owners to pre-submit a checkpoint publishing grant.
 
-```bash
-# The single closer — the exact command from the very first section, proving the
-# receipt stays valid forever with nothing from the operator. Run it again;
-# nothing changed but the audience's understanding.
-./forestrie verify --genesis genesis.cbor --receipt receipt.cbor \
-      --payload statement.cose --entry-id "$ENTRY_ID"
-```
+

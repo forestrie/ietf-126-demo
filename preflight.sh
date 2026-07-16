@@ -3,16 +3,17 @@
 # preflight.sh — everything the demo needs BEFORE the first on-stage step.
 #
 # Runs the rehearsal preflight (R1–R5 of the demo outline) against lane-A:
-#   R1  deploy a fresh univocity instance (generates the bootstrap ES256 key)
+#   R1  deploy a fresh univocity instance (generates Robert's ES256 bootstrap key)
 #   R2  operator-onboard the root genesis (mint onboard token + POST genesis)
 #   R3  fetch + cache the public genesis for offline verification
 #   R4  pre-delegate root sealing (so the first checkpoint lands in seconds)
 #   R5  mint the self-referential root grant
 #
-# On success it writes ./demo.env with everything Step 1+ needs. Then:
+# All generated state lands under .output/shared/ (gitignored). On success it
+# writes .output/shared/demo.env with everything the slides need. Then:
 #
-#     source demo.env
-#     # …and run Step 1 (see the printed commands at the end).
+#     source .output/shared/demo.env
+#     # …and paste demo-script.sh, slide by slide.
 #
 # Repeatable: each run deploys a FRESH forest (new bootstrap key + logId), so it
 # never depends on prior state. Persona keys (David/Alice/Bob) are stable —
@@ -22,6 +23,10 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 step() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
+
+# --- all shared, cross-slide state lives here (gitignored) ---
+SHARED=".output/shared"
+mkdir -p "$SHARED"
 
 # --- secrets (preflight only; NOT written to demo.env) ---
 export CANOPY_OPS_ADMIN_TOKEN=$(doppler secrets get CANOPY_OPS_ADMIN_TOKEN --project canopy --config dev --plain)
@@ -34,10 +39,13 @@ export CHAIN_ID=84532
 export DELEGATION_COORDINATOR_URL="https://coordinator-a.forest-2.forestrie.dev"
 export PINNED_REGISTRAR_KEY="z1YarLKXrsRe5egrwrFfbeYadd9lOqplKxbRuMGymHUOSY7YAfdOhhPWb3H72TrPMiMLw0CBMpDPXUGMEvbkOQ=="
 export OWNER_ADDRESS="0xdA30dB778C4aAE42BfAE2e81d4b12dEb0725F98C"   # must match DEPLOYER_KEY
-export ROBERT_PEM="./robert.es256.pem"
-export DAVID_PEM="./david.es256.pem"
-export ALICE_PEM="./alice.es256.pem"
-export BOB_PEM="./bob.es256.pem"
+export LOG_STORE_URL="https://pub-d7bc2e23615b4cd1a80a0944c3cd3507.r2.dev"
+export ROBERT_PEM="$SHARED/robert.es256.pem"
+export DAVID_PEM="$SHARED/david.es256.pem"
+export ALICE_PEM="$SHARED/alice.es256.pem"
+export BOB_PEM="$SHARED/bob.es256.pem"
+export GENESIS="$SHARED/genesis.cbor"
+DEPLOYMENT="$SHARED/deployment.json"
 
 # --- persona keys: stable across runs; generate only if missing ---
 step "Persona keys (David / Alice / Bob)"
@@ -55,13 +63,13 @@ step "R1 — deploy univocity + generate bootstrap key (on-chain, Base Sepolia)"
 ./forestrie deploy --bootstrap-alg es256 \
   --bootstrap-es256-generate --bootstrap-es256-pem-out "$ROBERT_PEM" \
   --owner-address "$OWNER_ADDRESS" --deployer-key "$DEPLOYER_KEY" \
-  --rpc-url "$RPC_URL" --out deployment.json
-export UNIVOCITY_ADDRESS=$(jq -r .imutableUnivocity deployment.json)
-export ROBERT_LOG_ID=$(jq -r .genesisLogId deployment.json)
+  --rpc-url "$RPC_URL" --out "$DEPLOYMENT"
+export UNIVOCITY_ADDRESS=$(jq -r .imutableUnivocity "$DEPLOYMENT")
+export ROBERT_LOG_ID=$(jq -r .genesisLogId "$DEPLOYMENT")
 # deployment.json carries the txHash but not the block; resolve the deploy block
-# from the receipt (portable — curl + jq only) so the Step-5 on-chain event
-# query (fromBlock) works.
-DEPLOY_TX=$(jq -r .txHash deployment.json)
+# from the receipt (portable — curl + jq only) so the on-chain event query
+# (fromBlock) works.
+DEPLOY_TX=$(jq -r .txHash "$DEPLOYMENT")
 DEPLOY_BLOCK_HEX=$(curl -fsS -X POST "$RPC_URL" -H 'Content-Type: application/json' \
   --data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getTransactionReceipt\",\"params\":[\"$DEPLOY_TX\"]}" \
   | jq -r '.result.blockNumber // ""')
@@ -78,8 +86,8 @@ node onboard-genesis.mjs
 
 # --- R3: fetch + cache the public genesis (offline trust root forever after) ---
 step "R3 — fetch + cache genesis.cbor"
-curl -fsS -o genesis.cbor "$FORESTRIE_BASE_URL/api/forest/$ROBERT_LOG_ID/genesis"
-echo "  wrote genesis.cbor ($(wc -c < genesis.cbor | tr -d ' ') bytes)"
+curl -fsS -o "$GENESIS" "$FORESTRIE_BASE_URL/api/forest/$ROBERT_LOG_ID/genesis"
+echo "  wrote $GENESIS ($(wc -c < "$GENESIS" | tr -d ' ') bytes)"
 
 # --- R4: pre-delegate root sealing (before the first write) ---
 step "R4 — pre-delegate root sealing to the vouched standing sealer key"
@@ -91,47 +99,42 @@ step "R4 — pre-delegate root sealing to the vouched standing sealer key"
 step "R5 — mint the self-referential root grant"
 ./forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
   --owner-log "$ROBERT_LOG_ID" --new-log "$ROBERT_LOG_ID" \
-  --sign-with "$ROBERT_PEM" --self-referential --out-b64 root-grant.b64
-export ROOT_GRANT_B64=$(cat root-grant.b64)
+  --sign-with "$ROBERT_PEM" --self-referential --out-b64 "$SHARED/root-grant.b64"
+export ROOT_GRANT_B64=$(cat "$SHARED/root-grant.b64")
 
 # --- write demo.env (secret-free; safe to leave on disk) ---
-step "Writing demo.env"
-cat > demo.env <<EOF
+step "Writing $SHARED/demo.env"
+cat > "$SHARED/demo.env" <<EOF
 # Generated by preflight.sh — source this before the on-stage steps.
 export FORESTRIE_BASE_URL="$FORESTRIE_BASE_URL"
 export RPC_URL="$RPC_URL"
 export CHAIN_ID=$CHAIN_ID
 export DELEGATION_COORDINATOR_URL="$DELEGATION_COORDINATOR_URL"
 export PINNED_REGISTRAR_KEY="$PINNED_REGISTRAR_KEY"
+export LOG_STORE_URL="$LOG_STORE_URL"
+export OWNER_ADDRESS="$OWNER_ADDRESS"
 export ROBERT_PEM="$ROBERT_PEM"
 export DAVID_PEM="$DAVID_PEM"
 export ALICE_PEM="$ALICE_PEM"
 export BOB_PEM="$BOB_PEM"
+export GENESIS="$GENESIS"
 export UNIVOCITY_ADDRESS="$UNIVOCITY_ADDRESS"
 export ROBERT_LOG_ID="$ROBERT_LOG_ID"
 export DEPLOY_BLOCK="$DEPLOY_BLOCK"
 export ROOT_GRANT_B64="$ROOT_GRANT_B64"
 export GRANT_B64="$ROOT_GRANT_B64"
 EOF
-echo "  wrote demo.env"
+echo "  wrote $SHARED/demo.env"
 
-cat <<'EOF'
+cat <<EOF
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Preflight complete. The forest is deployed, onboarded, delegated, and granted.
 
 Start the demo:
 
-  source demo.env
+  source $SHARED/demo.env
 
-Step 1 — register a signed statement and verify it offline:
-
-  echo '{"claim":"hello scitt wg"}' > statement.json
-  ./forestrie sign-statement --key "$ROBERT_PEM" --payload statement.json \
-      --content-type application/json --out statement.cose
-  REG=$(./forestrie register --base-url "$FORESTRIE_BASE_URL" \
-      --log-id "$ROBERT_LOG_ID" --statement statement.cose \
-      --grant-b64 "$ROOT_GRANT_B64" --out receipt.cbor 2>&1); echo "$REG"
-  ENTRY_ID=$(echo "$REG" | grep -oE 'entries/[0-9a-f]{32}/receipt' | head -1 | grep -oE '[0-9a-f]{32}')
-  ./forestrie verify --genesis genesis.cbor --receipt receipt.cbor \
-      --payload statement.cose --entry-id "$ENTRY_ID"
+Then paste demo-script.sh, slide by slide.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF

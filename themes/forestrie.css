@@ -1,0 +1,133 @@
+/* @theme forestrie */
+@import "default";
+
+:root {
+  --fr-bg: #f8fafc;
+  --fr-fg: #0f172a;
+  --fr-muted: #475569;
+  --fr-heading: #14532d;
+  --fr-accent: #15803d;
+  --fr-border: #cbd5e1;
+  --fr-code-bg: #e2e8f0;
+  --fr-code-fg: #0f172a;
+  --fr-table-head: #dcfce7;
+  --fr-base: 15px;
+  --fr-body: 14px;
+  --fr-summary: 13px;
+  --fr-footer-reserve: 72px;
+}
+
+section {
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  font-size: var(--fr-base);
+  line-height: 1.12;
+  background: var(--fr-bg);
+  color: var(--fr-fg);
+  padding: 38px 44px var(--fr-footer-reserve) 44px;
+  --marpit-root-font-size: var(--fr-base);
+}
+
+section.dense {
+  font-size: var(--fr-body);
+  line-height: 1.1;
+  --marpit-root-font-size: var(--fr-body);
+}
+
+section.dense h2 {
+  font-size: 1.15em;
+  margin: 0 0 0.12em 0;
+  line-height: 1.15;
+}
+
+section.compact {
+  font-size: var(--fr-body);
+  line-height: 1.1;
+}
+
+section.compact h2 {
+  font-size: 1.15em;
+  margin: 0 0 0.12em 0;
+}
+
+section p,
+section li {
+  margin-top: 0;
+  margin-bottom: 0.1em;
+  line-height: 1.1;
+}
+
+section ul,
+section ol {
+  margin-top: 0;
+  margin-bottom: 0.12em;
+  padding-left: 1.1em;
+}
+
+h1, h2, h3 {
+  color: var(--fr-heading);
+  font-weight: 600;
+  line-height: 1.12;
+}
+
+h1 { font-size: 1.55em; margin: 0 0 0.15em 0; }
+h2 { font-size: 1.2em; margin: 0 0 0.12em 0; }
+h3 { font-size: 1em; margin: 0 0 0.08em 0; }
+
+strong { color: var(--fr-accent); }
+
+code {
+  background: var(--fr-code-bg);
+  color: var(--fr-code-fg);
+  font-size: 0.9em;
+}
+
+section pre {
+  font-size: 0.8em;
+  line-height: 1.25;
+  margin: 0.15em 0;
+}
+
+section.lead {
+  background: #ffffff;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+section.lead h1 {
+  font-size: 1.65em;
+  color: #0f172a;
+  margin-bottom: 0.2em;
+}
+
+section.lead p {
+  color: var(--fr-muted);
+  font-size: 0.92em;
+  max-width: 92%;
+}
+
+table {
+  font-size: 0.78em;
+  margin: 0.08em 0 0.12em 0;
+}
+
+th {
+  background: var(--fr-table-head);
+  padding: 4px 8px;
+}
+
+td { padding: 4px 8px; }
+
+header, footer {
+  color: var(--fr-muted) !important;
+  font-size: 11px !important;
+}
+
+blockquote {
+  border-left: 4px solid #16a34a;
+  background: #ecfdf5;
+  padding: 0.35em 0.7em;
+  font-size: 0.88em;
+}

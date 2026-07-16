@@ -1,0 +1,15 @@
+{
+  "name": "forestrie-ietf-126-demo",
+  "private": true,
+  "description": "Forestrie IETF 126 demo — Marp deck (slides/) + runnable terminal script (demo-script.sh)",
+  "scripts": {
+    "build": "node scripts/build-deck.mjs && marp dist/deck.md -o dist/index.html --html --allow-local-files --no-stdin --theme-set themes",
+    "preview": "node scripts/build-deck.mjs && marp -s dist --html --allow-local-files --no-stdin --theme-set themes",
+    "open": "pnpm run build && open dist/index.html",
+    "present": "node scripts/build-deck.mjs && marp dist/deck.md -p --html --allow-local-files --no-stdin --theme-set themes",
+    "pdf": "node scripts/build-deck.mjs && marp dist/deck.md -o dist/deck.pdf --allow-local-files --no-stdin --theme-set themes"
+  },
+  "devDependencies": {
+    "@marp-team/marp-cli": "^4.1.2"
+  }
+}

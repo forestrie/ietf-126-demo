@@ -5,7 +5,7 @@
 // Env: FORESTRIE_BASE_URL, CANOPY_OPS_ADMIN_TOKEN, ROBERT_LOG_ID,
 //      UNIVOCITY_ADDRESS, CHAIN_ID, DELEGATION_COORDINATOR_URL, ROBERT_PEM
 // Set BODY_ONLY=1 to only (re)write genesis-body.cbor and exit (offline check).
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createPublicKey } from "node:crypto";
 
 const API = process.env.FORESTRIE_BASE_URL;
@@ -37,8 +37,10 @@ const body = Buffer.from([
   ...negKey(-68014), 0x26,            // GENESIS_ALG = -7 (ES256)
   ...negKey(-68015), ...bstr(xy),     // BOOTSTRAP_KEY (x||y, 64 bytes)
 ]);
-writeFileSync("genesis-body.cbor", body);
-console.error(`genesis body: ${body.length} bytes for log ${LOG_ID}`);
+mkdirSync(".output/shared", { recursive: true });
+const bodyPath = process.env.GENESIS_BODY ?? ".output/shared/genesis-body.cbor";
+writeFileSync(bodyPath, body);
+console.error(`genesis body: ${body.length} bytes for log ${LOG_ID} -> ${bodyPath}`);
 
 if (process.env.BODY_ONLY) process.exit(0);
 
