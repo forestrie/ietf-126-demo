@@ -86,34 +86,63 @@ captured). Cut to **Terminal** for each live demo, back to **Slides** to narrate
 | 4 Throughput | `slide-04-throughput.sh` | 100 statements → one checkpoint → 100 offline receipts | ✅ pass (100/100, 4.3s submit / 2.6s seal / 3.4s receipts) |
 | 5 Split-view | `slide-05-split-view.sh` | throwaway deploy + on-chain `bootstrapConfig` | ✅ pass (on-chain bootstrap key == slide 2's signing `kid`) |
 | 6 Log creation | `slide-06-log-creation.sh` | build auth→data hierarchy, Alice writes, self-serve her receipt | ✅ pass |
-| 7 Split-view verify | `slide-07-split-view-verify.sh` | **chain-anchored verify** of Alice's child-log receipt | ❌ **blocked** — child logs are not being anchored on-chain (see below) |
+| 7 Split-view verify | `slide-07-split-view-verify.sh` | **chain-anchored verify** + trust-ladder rungs 1 & 3 | ✅ pass (needs univocity **≥ v0.1.8** — see below) |
 | 9 Roundup | `slide-09-roundup.sh` | the root-log closer | ✅ pass |
 
-### ⚠️ Slide 7 blocked: child logs are not anchoring on-chain (2026-07-17)
+Rehearsed 2026-07-17 in **presentation order** (02→03→04→05→06→07→09) against a
+fresh preflight on univocity **v0.1.8**: all pass, including the root=201
+(103-leaf, odd) case that deterministically failed on v0.1.7.
 
-Slide 7 fails `verify: signature failed — delegation_invalid`. The command is
-correct and the CLI is behaving as designed — the environment is the problem:
+Delegation is healthy throughout: preflight R4 pre-delegates the root before the
+first write, and slide 6 pre-delegates each child (`create-log --prepare` →
+`delegate` → `create-log`). The sealer logs show no errors and every child log
+seals. **Sealing is not the problem; the on-chain publish is.**
 
-- On-chain `logState` for **both** child logs is empty — David's auth log and
-  Alice's data log are `([], 0)`, with a zeroed `logConfig`. Only the **root**
-  is anchored (size 201 — exactly the 103 leaves the root should have, so the
-  root IS anchored over David's auth-grant leaf).
-- Sealing is fine: both child logs have checkpoints in the tile store (HTTP
-  200), and slide 6 self-serves Alice's receipt from her data-log tile.
-- So chain-anchored verify finds nothing to match: approach C recomputes the
-  peak, byte-compares it against an **empty** accumulator, and correctly falls
-  back to reporting the underlying offline `delegation_invalid`.
-- Polled ~15 min after the writes: root stayed 201, both children stayed 0.
+### Slide 7 needs univocity ≥ v0.1.8 — the lone-peak grant leaf (FIXED)
 
-This **passed on 2026-07-16** (previous status table), so it is a lane-A
-regression, not a demo bug. Prime suspect is arbor's `publisher`: a child
-publish needs its creation grant from the **grants bucket**
-(`GRANT_STORE_URL`, a different bucket from `R2_URL`/`LOG_STORE_URL`) and needs
-its owner log anchored over the grant leaf (`StatusOwnerNotAnchored` → retry).
-The root does not take that path. Check the publisher's logs/queue for
-`StatusOwnerNotAnchored` retries or `read stored grant` errors on the child
-log ids, and that the child grant objects exist at
-`forests/forest/<root>/grants/{auth-log,data-log}/<logid>.cbor`.
+On **v0.1.7 and earlier**, running the deck in presentation order made slide 7
+fail deterministically (reproduced twice). Never a demo bug and never a
+delegation bug — a univocity contract bug, now fixed in
+[v0.1.8](https://github.com/forestrie/univocity/releases/tag/v0.1.8)
+([FOR-393](https://linear.app/forestrie/issue/FOR-393),
+[PR #32](https://github.com/forestrie/univocity/pull/32)).
+
+`_Univocity.sol` accepted an **empty** grant inclusion path only when
+`ownerLog.size == 1`. But an empty path is legitimate whenever **the grant leaf
+is itself a peak** of the owner's accumulator — exactly when it is the owner's
+last leaf and the owner's leaf count is **odd**. David's auth grant is always
+the root's last leaf, so it was a parity coin flip:
+
+| root leaves after David's grant | David's grant leaf | path | v0.1.7 |
+|---|---|---|---|
+| 103 (odd — R5 + slide 2 + slide 4's 100 + grant) | lone peak (103 = 64+32+4+2+**1**) | empty | ❌ revert → branch dead |
+| 104 (even) | inside the 8-peak | length 3 | ✅ publishes |
+
+The failure cascaded: David's auth publish reverted `InvalidPaymentReceipt` →
+publisher logged `unpublishable checkpoint terminally acked` and **never
+retried** → Alice's data log retried `owner_not_anchored` forever → slide 7 had
+an empty accumulator to match and correctly fell back to `delegation_invalid`.
+Making the publisher retry would **not** have helped: the revert is
+deterministic until the owner grows, and this demo's root never grows after
+slide 6.
+
+Confirmed fixed on v0.1.8 (2026-07-17): same deck, same order, root again at
+201 (103 leaves, odd) — David's auth log published first time, Alice's followed,
+and all three slide-7 rungs passed.
+
+`preflight.sh` needs no change: `forestrie deploy` defaults to
+`--release-tag latest`, so a fresh preflight now deploys v0.1.8. Confirm with
+`jq -r .releaseId .output/shared/deployment.json`. Note the contracts are
+immutable — **forests deployed before v0.1.8 keep the bug**; re-run preflight.
+
+### Timing: slide 7 waits for the child chain to anchor
+
+Alice's data log can only anchor **after** David's auth log does — univocity
+checks each grant against the owner's *on-chain* state, so `root → auth → data`
+settles one link at a time (~2 min after slide 6 on lane-A). Run slide 7
+immediately after slide 6 and the accumulator is still empty. `slide-07-*.sh`
+therefore polls `logState` until Alice's log is anchored before verifying; it
+is silent, and slide 8 (conceptual) covers the wait on stage.
 
 ### Child-log verification — chain-anchored (shipped) vs offline (in flight)
 
@@ -132,9 +161,10 @@ every log independently, so the anchor match proves binding + inclusion under
 the contract's consistency-gated state; the signature row reports
 `skipped … externalised to the on-chain accumulator`. A forged payload or
 tampered path recomputes a different peak and cannot anchor (tested live, both
-directions). This is the Slide 7 closer — **currently blocked**, see the
-child-log anchoring note above: the mechanism is shipped and correct, but it has
-nothing to match while the publisher is not anchoring child logs.
+directions). This is the Slide 7 closer. The mechanism is shipped and correct;
+when it reports `delegation_invalid` the cause is an **unanchored child log**,
+not a verify bug — either the forest predates univocity v0.1.8, or the chain
+has not settled yet (see the two notes above).
 
 **Still open (FOR-297 approach A):** purely-offline child verify needs the
 multi-hop grant-chain resolver in `@forestrie/receipt-verify` (walk genesis →

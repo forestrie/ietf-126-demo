@@ -20,6 +20,22 @@ set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/demo-lib.sh"
 demo_init 07
 
+# Alice's data log anchors only AFTER David's auth log does — univocity checks
+# the grant against the owner's on-chain state, so the chain root -> auth ->
+# data settles one link at a time (~2 min after slide 6 on lane-A). Silently
+# wait for it rather than fail the closer on stage. This is coverage lag, not
+# a failure: the verify below is the real assertion.
+anchored() { # $1=log-id — true once the log has any on-chain accumulator
+	local st
+	st=$(~/.foundry/bin/cast call "$UNIVOCITY_ADDRESS" \
+		"logState(bytes32)((bytes32[],uint64))" \
+		"$(printf '0x%064s' "$(echo "$1" | tr -d '-')" | tr ' ' '0')" \
+		--rpc-url "$RPC_URL" 2>/dev/null) || return 1
+	[ -n "$st" ] && [ "${st##*, }" != "0)" ]
+}
+retry anchored "$ALICE_DATA_LOG_ID" ||
+	echo "  (alice's data log is not anchored yet — the verify below will say so)"
+
 run './forestrie verify --genesis "$GENESIS" --receipt "$ALICE_RECEIPT" \
 	--payload "$ALICE_STMT" --entry-id "$ALICE_ENTRY_ID" \
 	--univocity "$UNIVOCITY_ADDRESS" --log-id "$ALICE_DATA_LOG_ID" --rpc-url "$RPC_URL"'
