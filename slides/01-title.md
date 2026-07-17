@@ -2,9 +2,7 @@
 
 # Forestrie
 
-A demonstration of a SCITT/ SCRAPI Transparency Service utilising the prposed [MMR-profile](https://datatracker.ietf.org/doc/draft-ietf-scitt-mmr-profile/) of COSE Receipts.
-
-**A pipe, not a store.**
+A demo of a SCITT Transparency Service providing SCRAPI endpoints and utilising the proposed [MMR-profile](https://datatracker.ietf.org/doc/draft-ietf-scitt-mmr-profile/) of COSE Receipts.
 
 <!--
 The arc: register a statement → self-serve the receipt offline → throughput/amortized

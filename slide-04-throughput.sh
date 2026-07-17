@@ -5,5 +5,5 @@ set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/demo-lib.sh"
 demo_init 04
 
-note 'batch-receipts.ts reads ROBERT_LOG_ID / ROBERT_PEM / ROOT_GRANT_B64 from the env'
+note "publish 100 statements at once — a single checkpoint covers them all, and every receipt derives offline"
 run 'N=100 bun batch-receipts.ts'

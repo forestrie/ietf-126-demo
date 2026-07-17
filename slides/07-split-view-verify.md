@@ -2,28 +2,24 @@
 
 ## Verifying Alice's statement — the accumulator is the authority
 
-* Chain anchored verify — the peak recomputed from Alice's statement + the
-  receipt's proof path must be in the data log's OWN on-chain accumulator;
-  the delegated seal was already enforced by univocity at publish:
+* Every log — root or child — has its **own on-chain accumulator**: split-view protection is per log
+* If you trust the contract's consistency-proof checking for split-view protection, and your
+  receipt's inclusion proof produces a peak in the on-chain accumulator, it follows that:
+  * **a)** the checkpoint signature that advanced that accumulator was **verified by the
+    contract at publish** — you can trust that check
+  * **b)** the publisher (the log owner, or a sealer the owner delegated) presented a grant
+    from the parent log — the contract **re-verified its inclusion against the parent's
+    on-chain accumulator, within the grant's size bounds, at that same publish**
+  * **c)** transitively, every ancestor state that grant rests on was gated the **same way** —
+    link by link, up to the bootstrap key bound into the contract at deploy
+* So why verify the signature again if you have the accumulator from the chain?
+  **Match the output of your inclusion proof to the peak and you are done.**
+* This **combines inclusion verification with a split-view check** — a signature verification
+against a "known log key", provided at verification time, doesn't do that on its own
 
 ```bash
 forestrie verify … --univocity "$UNIVOCITY_ADDRESS" --log-id "$ALICE_DATA_LOG_ID" --rpc-url "$RPC_URL"
 ```
-
-- Every log — root or child — has its **own on-chain accumulator**: split-view protection is per log
-- If you trust the contract's consistency-proof checking for split-view protection, and your
-  receipt's inclusion proof produces a peak in the on-chain accumulator, it follows that:
-  - **a)** the checkpoint signature that advanced that accumulator was **verified by the
-    contract at publish** — you can trust that check
-  - **b)** the publisher (the log owner, or a sealer the owner delegated) presented a grant
-    from the parent log — the contract **re-verified its inclusion against the parent's
-    on-chain accumulator, within the grant's size bounds, at that same publish**
-  - **c)** transitively, every ancestor state that grant rests on was gated the **same way** —
-    link by link, up to the bootstrap key bound into the contract at deploy
-- So why verify the signature again if you have the accumulator from the chain?
-  **Match the peak and you are done.**
-- This **combines inclusion verification with a split-view check** — signature verification
-  against a "known log key", provided at verification time, doesn't do that on its own
 
 <!--
 Mechanics of the closer: recompute leaf = SHA-256(idtimestamp ‖ SHA-256(statement)), walk the

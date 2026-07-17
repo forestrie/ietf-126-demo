@@ -2,9 +2,11 @@
 
 ## Throughput and latency
 
-- Receipts are rooted at **accumulator peaks**, not a single tree head
+- With the MMR-profile, log checkpoints are accumulators, rather than signed singleton tree heads.
+- This means receipt production is decoupled from statement registration
 - **One checkpoint covers every node** previously committed to the log
-- Peaks can be pre-signed, then receipts self-served later
+- Peaks can be pre-signed, so the receipts self-created later
+- This means we can amortize receipt latency across many 100's or 1000's of statements
 
 ```bash
 # 100 statements → one covering checkpoint → all 100 receipts derived offline
@@ -17,7 +19,7 @@ ONE checkpoint now covers all 100 after ~2.5s
 derived 100/100 receipts OFFLINE (zero operator calls) in <1s
 ```
 
-- Load-tested to **~4k req/s** — Cloudflare rate limits were the ceiling, not throughput
+- Load-tested to **~4k req/s** — Cloud provider rate limits (for hobby accounts) were the ceiling
 - For batch use cases, **amortized latency is tiny**
 
 <!--

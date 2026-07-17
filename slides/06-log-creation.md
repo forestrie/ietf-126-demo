@@ -1,13 +1,16 @@
 <!-- _class: compact -->
 
-## Log creation — SCITT using SCITT
+## Log creation and authorizing grants — SCITT using SCITT
 
 - The `--grant-b64` from the start is just a **SCITT signed statement** with a
   Univocity-contract-defined payload; its authority *is* a **proof of inclusion
-  in the parent log** — no side channel
-- The same grant primitive authorizes **new-log creation** and **statement writing**
-- A data-log **create+extend** grant names its writer in `grantData` — that grant
-  **is** the write authorization
+  in the parent log**
+- The same grant primitive authorizes **new-log creation** and **statement registration**
+- Statement signers are individually grant authorized to register statements on
+a particular log
+- Grants can not be revoked. The only expire, expiry time or usage based.
+- This is quite a long set of commands, illustrating provisioning of a
+heirarchy of logs rooted at Roberts, and extending down to David and Alice
 
 ```bash
 # Robert creates David's AUTH log (grantData = David). David then grants Alice a

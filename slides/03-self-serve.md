@@ -3,8 +3,9 @@
 ## Self-service receipts
 
 - MMR-profile receipts can be **self-created from a published checkpoint**
-- Grab the one **tile** holding your leaf + the latest checkpoint — that's all you need
-- The self-served receipt is **byte-identical** to the API-issued one
+- Grab the one **tile** holding your leaf + the latest checkpoint.
+- The self-served receipt is **byte-identical** to the API-issued one at time
+of registration
 
 ```bash
 # public read-only tile + checkpoint

@@ -21,6 +21,7 @@ self_serve_receipt() { # $1=log-id  $2=entry-id  $3=out-dir
 		--entry-id "$eid" --out "$d/receipt.cbor"
 }
 
+note "two fresh log ids: David's auth log, and Alice's data log that will live under it"
 run 'export DAVID_AUTH_LOG_ID=$(uuidgen | tr "A-Z" "a-z")
 export ALICE_DATA_LOG_ID=$(uuidgen | tr "A-Z" "a-z")
 echo "  david auth log: $DAVID_AUTH_LOG_ID"
@@ -28,14 +29,17 @@ echo "  alice data log: $ALICE_DATA_LOG_ID"'
 
 # 1. Robert creates David's AUTH log (grantData = David → David holds it).
 note "1. Robert creates David's AUTH log (grantData = David → David holds it)"
+note "prepare: pre-register David's log root at the coordinator (no sequencing yet), so we can delegate BEFORE the log exists — parent-authorized by Robert's root grant, no operator token"
 run './forestrie create-log --prepare --base-url "$FORESTRIE_BASE_URL" \
 	--owner-log "$ROBERT_LOG_ID" --new-log "$DAVID_AUTH_LOG_ID" --auth-log \
 	--signer-pem "$DAVID_PEM" --sign-with "$ROBERT_PEM" \
 	--parent-grant-b64 "$ROOT_GRANT_B64" --out-b64 "$S/auth-grant.b64"'
 
+note "delegate: David approves the operator's sealer for his log (a delegation cert) — must land before the log's first checkpoint, which is why prepare comes first"
 run './forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
 	--log-id "$DAVID_AUTH_LOG_ID" --sign-with "$DAVID_PEM" --known-sealer-key "$KNOWN_SEALER_KEY"'
 
+note "create: the SAME call, now WITHOUT --prepare, sequences the create grant into Robert's log — this actually opens David's log; sealing is already delegated so its first checkpoint seals in seconds"
 run './forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
 	--owner-log "$ROBERT_LOG_ID" --new-log "$DAVID_AUTH_LOG_ID" --auth-log \
 	--signer-pem "$DAVID_PEM" --sign-with "$ROBERT_PEM" \
@@ -46,14 +50,17 @@ export AUTH_GRANT_B64=$(cat "$S/auth-grant.b64")'
 #    David (the auth-log holder). This grant IS Alice's write authorization.
 #    Alice, as the data-log key holder, delegates its sealing.
 note '2. David grants Alice a DATA log: grantData = Alice, signed by David'
+note "prepare: same two-step, one level down — pre-register Alice's data-log root at the coordinator (owner is now David's auth log, not Robert's root)"
 run './forestrie create-log --prepare --base-url "$FORESTRIE_BASE_URL" \
 	--owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" --bootstrap-log "$ROBERT_LOG_ID" --data-log \
 	--signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM" \
 	--parent-grant-b64 "$AUTH_GRANT_B64" --out-b64 "$S/alice-data-grant.b64"'
 
+note "delegate: Alice (the data-log key holder) approves the sealer for HER log — each log's sealing is delegated by its own owner, never by the parent"
 run './forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
 	--log-id "$ALICE_DATA_LOG_ID" --sign-with "$ALICE_PEM" --known-sealer-key "$KNOWN_SEALER_KEY"'
 
+note "create: sequence Alice's create grant into David's auth log — grantData = Alice, so this grant IS Alice's write authorization (no separate register-grant step)"
 run './forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
 	--owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" --bootstrap-log "$ROBERT_LOG_ID" --data-log \
 	--signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM" \
@@ -63,13 +70,15 @@ export ALICE_GRANT_B64=$(cat "$S/alice-data-grant.b64")'
 # 3. Alice writes to her data log. Child logs register via the FOREST (root)
 #    path — /register/{root}/entries — and the grant directs the statement to the
 #    data log. Alice's first write opens the log; a checkpoint follows in ~seconds.
-note '3. Alice writes to her data log — registered via the FOREST (root) path;'
-note '   the grant directs the statement to the data log'
+note "3. Alice writes to her data log"
+note "her payload"
 run "echo '{\"alice\":\"hello from the data log\"}' > \"\$S/alice.json\""
 
+note "Alice signs it with her OWN key — a plain COSE Sign1 statement, same as slide 2"
 run './forestrie sign-statement --key "$ALICE_PEM" --payload "$S/alice.json" \
 	--content-type application/json --out "$S/alice.cose"'
 
+note "register via the FOREST (root) log id — child logs register on the root's /register path; Alice's grant routes the entry to her data log. Her first write opens the log; a checkpoint follows in ~seconds"
 run 'AR=$(./forestrie register --base-url "$FORESTRIE_BASE_URL" --log-id "$ROBERT_LOG_ID" \
 	--statement "$S/alice.cose" --grant-b64 "$ALICE_GRANT_B64" --out "$S/alice-receipt.cbor" 2>&1)
 echo "$AR"

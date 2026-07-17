@@ -2,9 +2,10 @@
 
 ## Publishing a signed statement
 
-- A plain **COSE Sign1** statement, signed with the log owner's key — any SCRAPI client works
-- Register it; `--grant-b64` authorizes publishing to the log *(explained later)*
-- A receipt comes back, and it **verifies offline**
+Here we
+- Sign a SCITT statement
+- Register it; `
+- And then we verify its receipt
 
 ```bash
 forestrie sign-statement --key "$ROBERT_PEM" --payload statement.json \

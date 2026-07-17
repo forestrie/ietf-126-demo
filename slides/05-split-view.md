@@ -2,12 +2,13 @@
 
 ## Split-view protection
 
-- For split-view protection we accept **a little blockchain**: the Univocity contract
+- For split-view protection we accept a little blockchain in our lives: checkpoints are published to the log owners instance of the Univocity smart contract.
 - Anyone can deploy one and register it with the TS
-- Checkpoints are **submitted permissionlessly**, but each must be **signed by a key the log
-  owner delegated** (or the owner, self-hosting) **and** carry a valid consistency proof
-- The first checkpoint of a *child* log needs a grant; the **root** owner is bound at deploy
+- Checkpoints are **submitted permissionlessly**, but each must be **signed** or **delegated to** by the log owner **and** carry a valid MMR-profile consistency proof
+- The first checkpoint of a *child* log needs a grant from its parent log; the **root** log owner is bound at contract deployment
 - One instance carries a **hierarchy** of log owners, each with independent split-view
+
+On this slide we *deploy* that contract based on a pre-built contract artefact.
 
 ```bash
 # Deploying is easy (throwaway instance — doesn't touch the live demo forest):

@@ -17,6 +17,7 @@ Four ways to answer *"why do I trust this receipt?"* — each rung needs
   Asynchronous Accumulators for Distributed PKI*)
 - **The receipt never expires, and the anchor never needs to be current — only trusted**
 - Known accumulator + tiles = the strongest **fully offline** verification
+- If you care about only one entry, you are guaranteed to only need one tile
 
 <!--
 Rung 1 is what every SCITT RP does today with a TS key from discovery — forestrie meets you there.

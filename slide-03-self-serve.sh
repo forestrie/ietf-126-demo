@@ -19,9 +19,9 @@ self_serve_receipt() { # $1=log-id  $2=entry-id  $3=out-dir
 		--entry-id "$eid" --out "$d/receipt.cbor"
 }
 
-note 'public read-only tile + checkpoint, then build the receipt locally'
+note "grab the one public tile holding your entry plus the latest checkpoint, and build the receipt yourself — no operator call"
 run 'retry self_serve_receipt "$ROBERT_LOG_ID" "$ENTRY_ID" "$S"'
 
-note 'byte-identical to the API receipt; verifies with the same command'
+note "the receipt you built is byte-identical to the operator's, and verifies with the exact same command"
 run './forestrie verify --genesis "$GENESIS" --receipt "$S/receipt.cbor" \
 	--payload "$STMT" --entry-id "$ENTRY_ID"'
