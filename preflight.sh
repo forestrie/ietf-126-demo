@@ -37,7 +37,7 @@ export FORESTRIE_BASE_URL="https://api-forest-2.forestrie.dev"
 export RPC_URL="https://sepolia.base.org"
 export CHAIN_ID=84532
 export DELEGATION_COORDINATOR_URL="https://coordinator-a.forest-2.forestrie.dev"
-export PINNED_REGISTRAR_KEY="z1YarLKXrsRe5egrwrFfbeYadd9lOqplKxbRuMGymHUOSY7YAfdOhhPWb3H72TrPMiMLw0CBMpDPXUGMEvbkOQ=="
+export KNOWN_SEALER_KEY="z1YarLKXrsRe5egrwrFfbeYadd9lOqplKxbRuMGymHUOSY7YAfdOhhPWb3H72TrPMiMLw0CBMpDPXUGMEvbkOQ=="
 export OWNER_ADDRESS="0xdA30dB778C4aAE42BfAE2e81d4b12dEb0725F98C"   # must match DEPLOYER_KEY
 export LOG_STORE_URL="https://pub-d7bc2e23615b4cd1a80a0944c3cd3507.r2.dev"
 export ROBERT_PEM="$SHARED/robert.es256.pem"
@@ -93,7 +93,7 @@ echo "  wrote $GENESIS ($(wc -c < "$GENESIS" | tr -d ' ') bytes)"
 step "R4 — pre-delegate root sealing to the vouched standing sealer key"
 ./forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
   --log-id "$ROBERT_LOG_ID" --sign-with "$ROBERT_PEM" \
-  --pinned-registrar-key "$PINNED_REGISTRAR_KEY"
+  --known-sealer-key "$KNOWN_SEALER_KEY"
 
 # --- R5: mint the self-referential root grant ---
 step "R5 — mint the self-referential root grant"
@@ -110,7 +110,7 @@ export FORESTRIE_BASE_URL="$FORESTRIE_BASE_URL"
 export RPC_URL="$RPC_URL"
 export CHAIN_ID=$CHAIN_ID
 export DELEGATION_COORDINATOR_URL="$DELEGATION_COORDINATOR_URL"
-export PINNED_REGISTRAR_KEY="$PINNED_REGISTRAR_KEY"
+export KNOWN_SEALER_KEY="$KNOWN_SEALER_KEY"
 export LOG_STORE_URL="$LOG_STORE_URL"
 export OWNER_ADDRESS="$OWNER_ADDRESS"
 export ROBERT_PEM="$ROBERT_PEM"

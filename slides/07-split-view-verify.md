@@ -29,8 +29,8 @@ forestrie verify … --univocity "$UNIVOCITY_ADDRESS" --log-id "$ALICE_DATA_LOG_
 Mechanics of the closer: recompute leaf = SHA-256(idtimestamp ‖ SHA-256(statement)), walk the
 receipt's proof path to a peak, byte-match it against logState(dataLog) on univocity. No local
 signature check — and per this slide's argument that is the STRONGER claim, not a concession.
-(CLI wording update pending: the signature row currently prints "skipped … externalised to the
-on-chain accumulator"; it will become "ok — verified against accumulator from chain".)
+The signature row now prints "ok — verified against accumulator from chain — signature enforced
+by univocity at publish" (FOR-297 D2, landed on the for-297 branch).
 Contract facts backing a/b/c (checked in _Univocity.sol publishCheckpoint): the grant is presented
 and inclusion-verified against the owner log's CURRENT on-chain state on EVERY publish, not just
 the first checkpoint; bounds are size-based (maxHeight / minGrowth — rule 4), so say "within its

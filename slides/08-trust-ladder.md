@@ -31,7 +31,9 @@ rung 3 just makes that trust explicit and portable.
 Extension mechanics (the first bullet): a buried peak is an interior node of the newer state; append
 the ancestor path from public tiles and match the covering peak. Soundness = hash collision
 resistance + the on-chain consistency proofs binding old state to new.
-Implementation status (don't belabor on stage): rung 4 shipped (chain-anchored verify); rungs 1 and
-3 are specced (--known-log-key, --known-accumulator — status-2607-09 D1/D5); rung 2 is FOR-297
-approach A, in design.
+Implementation status (don't belabor on stage): rung 4 shipped (chain-anchored verify); rung 1
+shipped (--known-log-key, no genesis needed; wrong key reports known_key_mismatch); rung 3 shipped
+(fetch-accumulator writes the block-pinned snapshot; verify --known-accumulator matches offline,
+extends older receipts via --massif, fails newer ones closed) — all on the for-297 branch,
+status-2607-09 D1/D5. Rung 2 is FOR-297 approach A, in design.
 -->

@@ -10,7 +10,7 @@ The log owner verifies the voucher against its copy of the --pinned-registry-key
       --coordinator-url "$DELEGATION_COORDINATOR_URL" \
       --log-id "$ROBERT_LOG_ID" \
       --sign-with "$ROBERT_PEM" \
-      --pinned-registrar-key "$PINNED_REGISTRAR_KEY"
+      --known-sealer-key "$KNOWN_SEALER_KEY"
 ```
 The grant is both time and log size limited.
 
@@ -45,7 +45,7 @@ export DAVID_DATA_LOG_ID=$(uuidgen | tr 'A-Z' 'a-z')
 # David approves checkpoint publishing on his new auth log (delegation cert).
 ./forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
       --log-id "$DAVID_AUTH_LOG_ID" --sign-with "$DAVID_PEM" \
-      --pinned-registrar-key "$PINNED_REGISTRAR_KEY"
+      --known-sealer-key "$KNOWN_SEALER_KEY"
 
 ./forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
       --owner-log "$ROBERT_LOG_ID" --new-log "$DAVID_AUTH_LOG_ID" --auth-log \
@@ -62,7 +62,7 @@ export AUTH_GRANT_B64=$(cat auth-grant.b64)
 
 ./forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
       --log-id "$DAVID_DATA_LOG_ID" --sign-with "$DAVID_PEM" \
-      --pinned-registrar-key "$PINNED_REGISTRAR_KEY"
+      --known-sealer-key "$KNOWN_SEALER_KEY"
 
 ./forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
       --owner-log "$DAVID_AUTH_LOG_ID" --new-log "$DAVID_DATA_LOG_ID" \
