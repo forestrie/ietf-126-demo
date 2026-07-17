@@ -142,18 +142,23 @@ export ALICE_ENTRY_ID=$(echo "$AR" | grep -oE 'entries/[0-9a-f]{32}/receipt' | h
 retry fetch_and_receipt "$ALICE_DATA_LOG_ID" "$ALICE_ENTRY_ID" "$S/adata"
 echo "Alice's statement is registered under David's SCITT grant and self-servable: $S/adata/receipt.cbor"
 
-# 5. The child-log closer: CHAIN-ANCHORED verify. The peak is recomputed locally
-#    from Alice's statement + the receipt's proof path and matched against the
-#    data log's own on-chain accumulator — the checkpoint signature is
-#    externalised to univocity. (Purely-offline verify of a child-log receipt
-#    still requires the FOR-297 multi-hop grant-chain resolver; the on-chain
-#    anchor IS the split-view authority, so this closer is the stronger claim.)
+# ═══════════════════════════════════════════════════════════════════════════
+# SLIDE 7 — Split-view verification: the accumulator is the authority
+# ═══════════════════════════════════════════════════════════════════════════
+# CHAIN-ANCHORED verify of Alice's statement. The peak is recomputed locally
+# from her statement + the receipt's proof path and matched against the data
+# log's OWN on-chain accumulator. The contract verified the checkpoint
+# signature, the publisher's grant (inclusion in the parent, re-checked every
+# publish), and consistency — transitively to the bootstrap — at publish, so
+# matching the peak subsumes the signature check AND adds split-view.
+# (Purely-offline child verify needs the FOR-297 multi-hop resolver or a
+# caller-supplied known log key — see status-2607-09.)
 ./forestrie verify --genesis "$GENESIS" --receipt "$S/adata/receipt.cbor" \
   --payload "$S/alice.cose" --entry-id "$ALICE_ENTRY_ID" \
   --univocity "$UNIVOCITY_ADDRESS" --log-id "$ALICE_DATA_LOG_ID" --rpc-url "$RPC_URL"
 
 # ═══════════════════════════════════════════════════════════════════════════
-# SLIDE 7 — Roundup: the closer (same verify as Slide 2, still true)
+# SLIDE 8 — Roundup: the closer (same verify as Slide 2, still true)
 # ═══════════════════════════════════════════════════════════════════════════
 ./forestrie verify --genesis "$GENESIS" --receipt "$RECEIPT" \
   --payload "$STMT" --entry-id "$ENTRY_ID"
