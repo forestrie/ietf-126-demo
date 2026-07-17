@@ -40,4 +40,7 @@ self-referential grant signed by the deploy-bound bootstrap key (rule 1) — tha
 transitivity in (c) grounds out.
 Purely-offline child verify (no chain access) needs the FOR-297 multi-hop grant-chain resolver, or
 a caller-supplied --known-log-key (standard SCITT RP posture) — both in flight; see status-2607-09.
+If asked "what if the log grew since my receipt?": the old proof EXTENDS — append the ancestor
+nodes (public tiles) from the old peak to the covering peak of the newer accumulator and match
+that. Old-accumulator compatibility (Reyzin–Yakoubov) — next slide's first bullet.
 -->
