@@ -2,10 +2,11 @@
 
 ## Verifying Alice's statement — the accumulator is the authority
 
+* Chain anchored verify — the peak recomputed from Alice's statement + the
+  receipt's proof path must be in the data log's OWN on-chain accumulator;
+  the delegated seal was already enforced by univocity at publish:
+
 ```bash
-# CHAIN-ANCHORED verify — the peak recomputed from Alice's statement + the
-# receipt's proof path must be in the data log's OWN on-chain accumulator;
-# the delegated seal was already enforced by univocity at publish:
 forestrie verify … --univocity "$UNIVOCITY_ADDRESS" --log-id "$ALICE_DATA_LOG_ID" --rpc-url "$RPC_URL"
 ```
 

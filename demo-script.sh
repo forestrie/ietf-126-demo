@@ -157,8 +157,10 @@ echo "Alice's statement is registered under David's SCITT grant and self-servabl
   --payload "$S/alice.cose" --entry-id "$ALICE_ENTRY_ID" \
   --univocity "$UNIVOCITY_ADDRESS" --log-id "$ALICE_DATA_LOG_ID" --rpc-url "$RPC_URL"
 
+# (SLIDE 8 — trust ladder — is conceptual; no terminal segment.)
+
 # ═══════════════════════════════════════════════════════════════════════════
-# SLIDE 8 — Roundup: the closer (same verify as Slide 2, still true)
+# SLIDE 9 — Roundup: the closer (same verify as Slide 2, still true)
 # ═══════════════════════════════════════════════════════════════════════════
 ./forestrie verify --genesis "$GENESIS" --receipt "$RECEIPT" \
   --payload "$STMT" --entry-id "$ENTRY_ID"
