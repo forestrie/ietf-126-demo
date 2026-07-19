@@ -80,13 +80,21 @@ else
 fi
 echo "  univocity=$UNIVOCITY_ADDRESS  logId=$ROBERT_LOG_ID  block=${DEPLOY_BLOCK:-<unresolved>}"
 
-# --- R2: operator onboarding of the root genesis ---
-step "R2 — onboard the root genesis (mint onboard token + POST genesis)"
-node onboard-genesis.mjs
+# --- R2: operator onboarding of the root genesis (FOR-406: pure CLI) ---
+# admin onboard-token mints under the operator credential; onboard-genesis
+# posts the direct-sign genesis under the pre-minted token and caches the
+# public genesis (the old R3) via --out. x402 payments are the future
+# public token source feeding the same --onboard-token input.
+step "R2 — onboard the root genesis (admin onboard-token + onboard-genesis)"
+ONBOARD_TOKEN=$(./forestrie admin onboard-token \
+  --base-url "$FORESTRIE_BASE_URL" --label ietf-126-demo)
 
-# --- R3: fetch + cache the public genesis (offline trust root forever after) ---
-step "R3 — fetch + cache genesis.cbor"
-curl -fsS -o "$GENESIS" "$FORESTRIE_BASE_URL/api/forest/$ROBERT_LOG_ID/genesis"
+# --- R3: onboard + fetch/cache genesis.cbor (offline trust root forever after) ---
+step "R3 — onboard-genesis (POST + cache genesis.cbor)"
+./forestrie onboard-genesis --base-url "$FORESTRIE_BASE_URL" \
+  --deployment "$DEPLOYMENT" --bootstrap-pem "$ROBERT_PEM" \
+  --chain-id "$CHAIN_ID" --coordinator-url "$DELEGATION_COORDINATOR_URL" \
+  --onboard-token "$ONBOARD_TOKEN" --out "$GENESIS"
 echo "  wrote $GENESIS ($(wc -c < "$GENESIS" | tr -d ' ') bytes)"
 
 # --- R4: pre-delegate root sealing (before the first write) ---

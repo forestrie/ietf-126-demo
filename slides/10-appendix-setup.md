@@ -6,7 +6,7 @@
 `.output/shared/`:
 
 1. **deploy** a Univocity instance (generates Robert's ES256 bootstrap key)
-2. **onboard** the root genesis (`onboard-genesis.mjs`)
+2. **onboard** the root genesis (`forestrie admin onboard-token` → `forestrie onboard-genesis`)
 3. **fetch + cache** `genesis.cbor` (offline trust root thereafter)
 4. **delegate** root sealing to the operator's vouched sealer
 5. **mint** the self-referential root grant

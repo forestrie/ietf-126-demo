@@ -48,7 +48,6 @@ scripts are tested unattended.
 | `slide-NN-*.sh` | the tested terminal sequence — one script per slide |
 | `demo-lib.sh` | presenter plumbing: echo → wait for key → run; state handoff |
 | `preflight.sh` | R1–R5 prep → `.output/shared/demo.env` |
-| `onboard-genesis.mjs` | operator genesis onboarding helper (R2) |
 | `batch-receipts.ts` | Slide 4: N statements → one checkpoint → N offline receipts |
 | `themes/`, `scripts/build-deck.mjs`, `package.json` | Marp build scaffolding |
 | `.output/` | runtime state (gitignored): `shared/` + per-slide `slide-N/` |
