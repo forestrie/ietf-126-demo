@@ -17,12 +17,52 @@
 #
 # Repeatable: each run deploys a FRESH forest (new bootstrap key + logId), so it
 # never depends on prior state. Persona keys (David/Alice/Bob) are stable —
-# generated once if absent. Requires: doppler auth (canopy/dev), the ./forestrie
-# binary, node, jq, openssl, curl.
+# generated once if absent. Requires: doppler auth (canopy/dev), node, jq,
+# openssl, curl. The forestrie CLI binary is FETCHED from the public GitHub
+# release (no build, nothing checked in) — pin with FORESTRIE_VERSION.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 step() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
+
+# --- forestrie CLI: fetched from a GitHub release (gitignored, never committed) ---
+FORESTRIE_VERSION="${FORESTRIE_VERSION:-v0.5.0}"
+
+# Download the pinned release binary for this platform into ./forestrie, verify
+# its sha256 sidecar, and mark it executable. Idempotent: reuses an already-
+# present matching version.
+fetch_forestrie() {
+  if [ -x ./forestrie ] && ./forestrie --version 2>/dev/null | grep -q "${FORESTRIE_VERSION#v}"; then
+    echo "  reuse ./forestrie (${FORESTRIE_VERSION})"
+    return 0
+  fi
+  local os arch asset
+  os=$(uname -s); arch=$(uname -m)
+  case "$os/$arch" in
+    Darwin/arm64)             asset="forestrie-darwin-arm64" ;;
+    Linux/x86_64|Linux/amd64) asset="forestrie-linux-x64" ;;
+    *)
+      echo "no forestrie release asset for $os/$arch — build ./forestrie manually" >&2
+      return 1 ;;
+  esac
+  local base="https://github.com/forestrie/forestrie-cli/releases/download/${FORESTRIE_VERSION}"
+  curl -fsSL "$base/$asset" -o ./forestrie.download
+  local want got
+  want=$(curl -fsSL "$base/$asset.sha256" | awk '{print $1}')
+  if command -v sha256sum >/dev/null 2>&1; then
+    got=$(sha256sum ./forestrie.download | awk '{print $1}')
+  else
+    got=$(shasum -a 256 ./forestrie.download | awk '{print $1}')
+  fi
+  if [ -z "$want" ] || [ "$want" != "$got" ]; then
+    rm -f ./forestrie.download
+    echo "forestrie ${FORESTRIE_VERSION} ${asset} sha256 mismatch (want ${want:-<none>}, got ${got})" >&2
+    return 1
+  fi
+  chmod +x ./forestrie.download
+  mv ./forestrie.download ./forestrie
+  echo "  fetched ./forestrie (${FORESTRIE_VERSION}, ${asset})"
+}
 
 # --- all shared, cross-slide state lives here (gitignored) ---
 SHARED=".output/shared"
@@ -57,6 +97,10 @@ for pem in "$DAVID_PEM" "$ALICE_PEM" "$BOB_PEM"; do
     echo "  generated $pem"
   fi
 done
+
+# --- forestrie CLI binary (fetched, not built/committed) ---
+step "forestrie CLI — fetch ${FORESTRIE_VERSION} release binary"
+fetch_forestrie
 
 # --- R1: deploy a fresh univocity instance (fresh bootstrap key) ---
 step "R1 — deploy univocity + generate bootstrap key (on-chain, Base Sepolia)"
