@@ -15,10 +15,11 @@ dependency on a single operator.
 
 **Forestrie is a pipe, not a store.**
 
+
+The [preflight](https://github.com/forestrie/ietf-126-demo/blob/main/preflight.sh) script illustrates on boarding with a forestrie TS. Ask me for an onboard token if you want to kick the tires
+
 ```bash
-# The closer — the very first verify, still true, nothing from the operator:
-forestrie verify --genesis "$GENESIS" --receipt receipt.cbor \
-  --payload statement.cose --entry-id "$ENTRY_ID"
+./preflight.sh
 ```
 
 <!--

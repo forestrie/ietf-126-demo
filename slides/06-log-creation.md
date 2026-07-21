@@ -20,7 +20,8 @@ forestrie create-log … --owner-log "$ROBERT_LOG_ID"     --new-log "$DAVID_AUTH
 forestrie create-log … --owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" --data-log --signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM"
 
 # Alice writes to her data log — child logs register via the FOREST (root) path;
-# the grant directs the statement to the data log:
+# the grant directs the statement to the data log. Her statement carries her own
+# CWT claims (iss = her key id; here she names the subject: --sub urn:demo:alice:hello-1):
 forestrie register --log-id "$ROBERT_LOG_ID" --grant-b64 "$ALICE_GRANT_B64" --statement alice.cose
 ```
 

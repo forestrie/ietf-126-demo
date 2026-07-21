@@ -12,7 +12,7 @@ demo_init 02
 note "start with a claim — any JSON payload"
 run "echo '{\"claim\":\"hello scitt wg\"}' > \"\$S/statement.json\""
 
-note "Robert signs it with his log key — a plain COSE Sign1 statement, works with any SCITT client"
+note "Robert signs it with his log key — a SCITT signed statement: plain COSE Sign1 with issuer/subject CWT claims bound under the signature (iss defaults to his key id, sub to the payload hash)"
 run './forestrie sign-statement --key "$ROBERT_PEM" --payload "$S/statement.json" \
 	--content-type application/json --out "$S/statement.cose"'
 

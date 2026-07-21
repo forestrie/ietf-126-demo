@@ -74,9 +74,9 @@ note "3. Alice writes to her data log"
 note "her payload"
 run "echo '{\"alice\":\"hello from the data log\"}' > \"\$S/alice.json\""
 
-note "Alice signs it with her OWN key — a plain COSE Sign1 statement, same as slide 2"
+note "Alice signs it with her OWN key — same as slide 2, but she names her subject explicitly (--sub); iss still defaults to her key id, and --iss/--iat are there when she wants them"
 run './forestrie sign-statement --key "$ALICE_PEM" --payload "$S/alice.json" \
-	--content-type application/json --out "$S/alice.cose"'
+	--content-type application/json --sub "urn:demo:alice:hello-1" --out "$S/alice.cose"'
 
 note "register via the FOREST (root) log id — child logs register on the root's /register path; Alice's grant routes the entry to her data log. Her first write opens the log; a checkpoint follows in ~seconds"
 run 'AR=$(./forestrie register --base-url "$FORESTRIE_BASE_URL" --log-id "$ROBERT_LOG_ID" \
