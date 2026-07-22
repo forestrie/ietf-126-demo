@@ -2,7 +2,10 @@
 #
 # preflight.sh — everything the demo needs BEFORE the first on-stage step.
 #
-# Runs the rehearsal preflight (R1–R5 of the demo outline) against lane-A:
+# Runs the rehearsal preflight (R1–R5 of the demo outline) against the selected
+# lane — pass --lane=a or --lane=b (default b). The lane only picks a handful of
+# endpoints + the ops-admin token source; the R1–R5 steps and every slide-NN
+# script are lane-agnostic (they read the generated demo.env):
 #   R1  deploy a fresh univocity instance (generates Robert's ES256 bootstrap key)
 #   R2  operator-onboard the root genesis (mint onboard token + POST genesis)
 #   R3  fetch + cache the public genesis for offline verification
@@ -17,13 +20,25 @@
 #
 # Repeatable: each run deploys a FRESH forest (new bootstrap key + logId), so it
 # never depends on prior state. Persona keys (David/Alice/Bob) are stable —
-# generated once if absent. Requires: doppler auth (canopy/dev), node, jq,
-# openssl, curl. The forestrie CLI binary is FETCHED from the public GitHub
-# release (no build, nothing checked in) — pin with FORESTRIE_VERSION.
+# generated once if absent. Requires: doppler auth (canopy/dev for lane a,
+# system-testing/stg for lane b), node, jq, openssl, curl. The forestrie CLI
+# binary is FETCHED from the public GitHub release (no build, nothing checked
+# in) — pin with FORESTRIE_VERSION.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 step() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
+
+# --- lane selection: --lane=a|b (default b) ---
+LANE=b
+for arg in "$@"; do
+  case "$arg" in
+    --lane=a | --lane=A) LANE=a ;;
+    --lane=b | --lane=B) LANE=b ;;
+    --lane=*) echo "unknown --lane (use a|b): $arg" >&2; exit 1 ;;
+    *) echo "unknown arg: $arg" >&2; exit 1 ;;
+  esac
+done
 
 # --- forestrie CLI: fetched from a GitHub release (gitignored, never committed) ---
 FORESTRIE_VERSION="${FORESTRIE_VERSION:-v0.5.0}"
@@ -68,18 +83,40 @@ fetch_forestrie() {
 SHARED=".output/shared"
 mkdir -p "$SHARED"
 
-# --- secrets (preflight only; NOT written to demo.env) ---
-export CANOPY_OPS_ADMIN_TOKEN=$(doppler secrets get CANOPY_OPS_ADMIN_TOKEN --project canopy --config dev --plain)
-export DEPLOYER_KEY=$(doppler secrets get DEPLOY_KEY --project canopy --config dev --plain)
+# --- lane-specific config: ONLY the canopy + coordinator endpoints and the
+# ops-admin token source differ between lanes (preflight-only secret, never
+# written to demo.env). Everything below the case is lane-agnostic. ---
+step "Lane $LANE — endpoints + ops-admin token"
+case "$LANE" in
+  a)
+    export FORESTRIE_BASE_URL="https://api-forest-2.forestrie.dev"
+    export DELEGATION_COORDINATOR_URL="https://coordinator-a.forest-2.forestrie.dev"
+    export CANOPY_OPS_ADMIN_TOKEN=$(doppler secrets get CANOPY_OPS_ADMIN_TOKEN --project canopy --config dev --plain)
+    # forest-1 provisions log storage PER SLOT (forest-1 log-storage.tf): slot a
+    # keeps the legacy `forest-dev-5-logs` bucket; its Cloudflare managed domain:
+    export LOG_STORE_URL="${LOG_STORE_URL:-https://pub-d7bc2e23615b4cd1a80a0944c3cd3507.r2.dev}"
+    ;;
+  b)
+    export FORESTRIE_BASE_URL="https://api-b.forest-2.forestrie.dev"
+    export DELEGATION_COORDINATOR_URL="https://coordinator-b.forest-2.forestrie.dev"
+    # lane-B ops-admin token lives in system-testing/stg (canopy/stg has none).
+    export CANOPY_OPS_ADMIN_TOKEN=$(doppler secrets get CANOPY_OPS_ADMIN_TOKEN --project system-testing --config stg --plain)
+    # slot b log storage is a SEPARATE bucket `forest-dev-5-logs-b` (suffix `-b`);
+    # its Cloudflare managed r2.dev domain (distinct hash from slot a):
+    export LOG_STORE_URL="${LOG_STORE_URL:-https://pub-7ed90970555841999fcd76749f4f9ec8.r2.dev}"
+    ;;
+esac
+echo "  base=$FORESTRIE_BASE_URL  coordinator=$DELEGATION_COORDINATOR_URL"
 
-# --- lane-A config (public) ---
-export FORESTRIE_BASE_URL="https://api-forest-2.forestrie.dev"
+# --- lane-agnostic config ---
+# DEPLOY_KEY is a Base Sepolia gas-only payer (same chain both lanes), so the
+# deploy key + its OWNER_ADDRESS are shared; KNOWN_SEALER_KEY (registrar) and
+# RPC/chain are shared too.
+export DEPLOYER_KEY=$(doppler secrets get DEPLOY_KEY --project canopy --config dev --plain)
 export RPC_URL="https://sepolia.base.org"
 export CHAIN_ID=84532
-export DELEGATION_COORDINATOR_URL="https://coordinator-a.forest-2.forestrie.dev"
 export KNOWN_SEALER_KEY="z1YarLKXrsRe5egrwrFfbeYadd9lOqplKxbRuMGymHUOSY7YAfdOhhPWb3H72TrPMiMLw0CBMpDPXUGMEvbkOQ=="
-export OWNER_ADDRESS="0xdA30dB778C4aAE42BfAE2e81d4b12dEb0725F98C"   # must match DEPLOYER_KEY
-export LOG_STORE_URL="https://pub-d7bc2e23615b4cd1a80a0944c3cd3507.r2.dev"
+export OWNER_ADDRESS="0xdA30dB778C4aAE42BfAE2e81d4b12dEb0725F98C"   # matches DEPLOYER_KEY
 export ROBERT_PEM="$SHARED/robert.es256.pem"
 export DAVID_PEM="$SHARED/david.es256.pem"
 export ALICE_PEM="$SHARED/alice.es256.pem"
