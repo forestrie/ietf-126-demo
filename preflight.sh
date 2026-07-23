@@ -89,7 +89,12 @@ mkdir -p "$SHARED"
 step "Lane $LANE — endpoints + ops-admin token"
 case "$LANE" in
   a)
-    export FORESTRIE_BASE_URL="https://api-forest-2.forestrie.dev"
+    # api-a, NOT the unprefixed api-forest-2 alias: forest-1 binds
+    # api-{DNS_SUB} as a custom domain on the LANE B worker (canopy-api-prod,
+    # dns_catalog.tf edge_api_alias_fqdn). The old value here was inherited from
+    # the pre---lane .env and split canopy traffic to lane B while the
+    # coordinator stayed on lane A (plan-2607-39 D2).
+    export FORESTRIE_BASE_URL="https://api-a.forest-2.forestrie.dev"
     export DELEGATION_COORDINATOR_URL="https://coordinator-a.forest-2.forestrie.dev"
     export CANOPY_OPS_ADMIN_TOKEN=$(doppler secrets get CANOPY_OPS_ADMIN_TOKEN --project canopy --config dev --plain)
     # forest-1 provisions log storage PER SLOT (forest-1 log-storage.tf): slot a
