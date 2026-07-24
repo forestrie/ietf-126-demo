@@ -76,7 +76,7 @@ branding overlay; drive slides from `pnpm run present` on a 2nd screen (never
 captured). Cut to **Terminal** for each live demo, back to **Slides** to narrate.
 (Same pattern as `product/decks/ietf-126-mmr-profile-demo/recording/`.)
 
-## Tested status (2026-07-17, lane-A Base Sepolia, fresh preflight)
+## Tested status (2026-07-24, lane-A Base Sepolia, fresh preflight)
 
 | Slide | Script | Demo | Status |
 |-------|--------|------|--------|
@@ -88,9 +88,19 @@ captured). Cut to **Terminal** for each live demo, back to **Slides** to narrate
 | 7 Split-view verify | `slide-07-split-view-verify.sh` | **chain-anchored verify** + trust-ladder rungs 1 & 3 | ✅ pass (needs univocity **≥ v0.1.8** — see below) |
 | 9 Roundup | `slide-09-roundup.sh` | the root-log closer | ✅ pass |
 
-Rehearsed 2026-07-17 in **presentation order** (02→03→04→05→06→07→09) against a
-fresh preflight on univocity **v0.1.8**: all pass, including the root=201
+Re-verified 2026-07-24 against lane A (`api-a.forest-2.forestrie.dev`) with a
+fresh preflight and forestrie-cli **v0.5.0**: preflight R1–R5 plus all seven
+slide scripts pass. Previously rehearsed 2026-07-17 in **presentation order**
+(02→03→04→05→06→07→09) on univocity **v0.1.8**, including the root=201
 (103-leaf, odd) case that deterministically failed on v0.1.7.
+
+> **Run `--lane=a` from an up-to-date checkout.** Before 2026-07-23 a stale zone
+> route sent the `api-forest-2.forestrie.dev` alias to lane A; that route is gone
+> and the alias now resolves to **lane B**, as forest-1 always intended. A
+> checkout predating the `api-a` fix therefore deploys univocity and onboards a
+> forest on lane B, and only fails at **R4** — `no standing delegate-key entry
+> for log` — after the gas is already spent. A `demo.env` generated before
+> 2026-07-23 has the same problem; regenerate it.
 
 Delegation is healthy throughout: preflight R4 pre-delegates the root before the
 first write, and slide 6 pre-delegates each child (`create-log --prepare` →

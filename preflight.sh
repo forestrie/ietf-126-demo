@@ -89,11 +89,18 @@ mkdir -p "$SHARED"
 step "Lane $LANE — endpoints + ops-admin token"
 case "$LANE" in
   a)
-    # api-a, NOT the unprefixed api-forest-2 alias: forest-1 binds
-    # api-{DNS_SUB} as a custom domain on the LANE B worker (canopy-api-prod,
-    # dns_catalog.tf edge_api_alias_fqdn). The old value here was inherited from
-    # the pre---lane .env and split canopy traffic to lane B while the
-    # coordinator stayed on lane A (plan-2607-39 D2).
+    # api-a, NOT the unprefixed api-forest-2 alias. forest-1 binds api-{DNS_SUB}
+    # as a custom domain on the LANE B worker (dns_catalog.tf
+    # edge_api_alias_fqdn), so the alias belongs to lane B.
+    #
+    # History, because the first version of this comment got it wrong: until
+    # 2026-07-23 a stale zone route shadowed that custom domain and sent the
+    # alias to lane A, so the old value here happened to reach lane A and the
+    # demo was accidentally consistent. The route has since been removed
+    # (FOR-453), so the alias now really does resolve to lane B -- and a stale
+    # checkout using it fails at R4 with "no standing delegate-key entry for
+    # log", after R1-R3 have already deployed and onboarded on the wrong lane.
+    # Naming the lane explicitly is what actually protects this.
     export FORESTRIE_BASE_URL="https://api-a.forest-2.forestrie.dev"
     export DELEGATION_COORDINATOR_URL="https://coordinator-a.forest-2.forestrie.dev"
     export CANOPY_OPS_ADMIN_TOKEN=$(doppler secrets get CANOPY_OPS_ADMIN_TOKEN --project canopy --config dev --plain)
