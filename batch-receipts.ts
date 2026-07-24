@@ -27,9 +27,11 @@ const GRANT = (
   readFileSync(process.env.GRANT_FILE ?? "root-grant.b64", "utf8")
 ).trim();
 // Public read-only R2 origin for lane-A (override with LOG_STORE_URL).
+// Custom domain rather than the managed pub-*.r2.dev: r2.dev honours no origin
+// Cache-Control and accepts no Cache Rules, so it serves published objects under
+// a cache policy nobody chose (devdocs ADR-0057, plan-2607-41).
 const STORE =
-  process.env.LOG_STORE_URL ??
-  "https://pub-d7bc2e23615b4cd1a80a0944c3cd3507.r2.dev";
+  process.env.LOG_STORE_URL ?? "https://logs.a.forest-2.forestrie.dev";
 // Invoke the forestrie CLI. Default: the ./forestrie binary in this dir; falls
 // back to `forestrie` on PATH. Set FORESTRIE_CLI_DIR to run the repo in dev mode.
 const CLI_DIR = process.env.FORESTRIE_CLI_DIR;
