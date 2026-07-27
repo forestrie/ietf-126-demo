@@ -41,7 +41,7 @@ for arg in "$@"; do
 done
 
 # --- forestrie CLI: fetched from a GitHub release (gitignored, never committed) ---
-FORESTRIE_VERSION="${FORESTRIE_VERSION:-v0.5.0}"
+FORESTRIE_VERSION="${FORESTRIE_VERSION:-v0.6.0}"
 
 # Download the pinned release binary for this platform into ./forestrie, verify
 # its sha256 sidecar, and mark it executable. Idempotent: reuses an already-
@@ -83,10 +83,10 @@ fetch_forestrie() {
 SHARED=".output/shared"
 mkdir -p "$SHARED"
 
-# --- lane-specific config: ONLY the canopy + coordinator endpoints and the
-# ops-admin token source differ between lanes (preflight-only secret, never
-# written to demo.env). Everything below the case is lane-agnostic. ---
-step "Lane $LANE — endpoints + ops-admin token"
+# --- lane-specific config: ONLY the canopy + coordinator endpoints differ
+# between lanes. Since v0.6.0 onboarding is fully self-service (attested +
+# x402-paid) — no operator credential appears anywhere in this script. ---
+step "Lane $LANE — endpoints"
 case "$LANE" in
   a)
     # api-a, NOT the unprefixed api-forest-2 alias. forest-1 binds api-{DNS_SUB}
@@ -103,7 +103,6 @@ case "$LANE" in
     # Naming the lane explicitly is what actually protects this.
     export FORESTRIE_BASE_URL="https://api-a.forest-2.forestrie.dev"
     export DELEGATION_COORDINATOR_URL="https://coordinator-a.forest-2.forestrie.dev"
-    export CANOPY_OPS_ADMIN_TOKEN=$(doppler secrets get CANOPY_OPS_ADMIN_TOKEN --project canopy --config dev --plain)
     # forest-1 provisions log storage PER SLOT (forest-1 log-storage.tf): slot a
     # keeps the legacy `forest-dev-5-logs` bucket; its Cloudflare managed domain:
     export LOG_STORE_URL="${LOG_STORE_URL:-https://pub-d7bc2e23615b4cd1a80a0944c3cd3507.r2.dev}"
@@ -111,8 +110,6 @@ case "$LANE" in
   b)
     export FORESTRIE_BASE_URL="https://api-b.forest-2.forestrie.dev"
     export DELEGATION_COORDINATOR_URL="https://coordinator-b.forest-2.forestrie.dev"
-    # lane-B ops-admin token lives in system-testing/stg (canopy/stg has none).
-    export CANOPY_OPS_ADMIN_TOKEN=$(doppler secrets get CANOPY_OPS_ADMIN_TOKEN --project system-testing --config stg --plain)
     # slot b log storage is a SEPARATE bucket `forest-dev-5-logs-b` (suffix `-b`);
     # its Cloudflare managed r2.dev domain (distinct hash from slot a):
     export LOG_STORE_URL="${LOG_STORE_URL:-https://pub-7ed90970555841999fcd76749f4f9ec8.r2.dev}"
@@ -173,14 +170,19 @@ else
 fi
 echo "  univocity=$UNIVOCITY_ADDRESS  logId=$ROBERT_LOG_ID  block=${DEPLOY_BLOCK:-<unresolved>}"
 
-# --- R2: operator onboarding of the root genesis (FOR-406: pure CLI) ---
-# admin onboard-token mints under the operator credential; onboard-genesis
-# posts the direct-sign genesis under the pre-minted token and caches the
-# public genesis (the old R3) via --out. x402 payments are the future
-# public token source feeding the same --onboard-token input.
-step "R2 — onboard the root genesis (admin onboard-token + onboard-genesis)"
-ONBOARD_TOKEN=$(./forestrie admin onboard-token \
-  --base-url "$FORESTRIE_BASE_URL" --label ietf-126-demo)
+# --- R2: attested self-service onboarding (ADR-0059 D8 + x402) ---
+# The bootstrap key Robert generated in R1 signs a registrant attestation —
+# proof that the onboard request comes from the deployed contract's only
+# legitimate registrant — and the deployer wallet pays the operator's x402
+# challenge (nominal USDC on Base Sepolia; REAL settlement). No operator
+# credential is involved: the payment and the attestation are the whole
+# authorization.
+step "R2 — attested onboard request (x402-paid, bootstrap-key attestation)"
+ONBOARD_TOKEN=$(./forestrie onboard-request \
+  --base-url "$FORESTRIE_BASE_URL" --deployment "$DEPLOYMENT" \
+  --bootstrap-pem "$ROBERT_PEM" --label ietf-126-demo \
+  --contact-email robert@ietf-126.demo \
+  --payer-key "$DEPLOYER_KEY")
 
 # --- R3: onboard + fetch/cache genesis.cbor (offline trust root forever after) ---
 step "R3 — onboard-genesis (POST + cache genesis.cbor)"

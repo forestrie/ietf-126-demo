@@ -89,7 +89,7 @@ captured). Cut to **Terminal** for each live demo, back to **Slides** to narrate
 | 9 Roundup | `slide-09-roundup.sh` | the root-log closer | ✅ pass |
 
 Re-verified 2026-07-24 against **both lanes** with a fresh preflight and
-forestrie-cli **v0.5.0** — preflight R1–R5 plus all seven slide scripts pass on
+forestrie-cli **v0.6.0** — preflight R1–R5 plus all seven slide scripts pass on
 each:
 
 | lane | base URL | preflight | slides |
