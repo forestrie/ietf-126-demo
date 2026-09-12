@@ -1,5 +1,6 @@
 {
   "name": "forestrie-ietf-126-demo",
+  "license": "MIT",
   "private": true,
   "description": "Forestrie IETF 126 demo — Marp deck (slides/) + runnable terminal script (demo-script.sh)",
   "scripts": {
