@@ -123,8 +123,7 @@ On **v0.1.7 and earlier**, running the deck in presentation order made slide 7
 fail deterministically (reproduced twice). Never a demo bug and never a
 delegation bug — a univocity contract bug, now fixed in
 [v0.1.8](https://github.com/forestrie/univocity/releases/tag/v0.1.8)
-([FOR-393](https://linear.app/forestrie/issue/FOR-393),
-[PR #32](https://github.com/forestrie/univocity/pull/32)).
+([PR #32](https://github.com/forestrie/univocity/pull/32)).
 
 `_Univocity.sol` accepted an **empty** grant inclusion path only when
 `ownerLog.size == 1`. But an empty path is legitimate whenever **the grant leaf
@@ -171,7 +170,7 @@ so purely-offline `verify`/`verify-grant` fails `signature: delegation_invalid`
 (the offline library resolves the label-1000 cert against the genesis key only,
 one hop; the server resolves per-log keys via `logSigningKey(ownerLogId)`).
 
-**Shipped (FOR-297 approach C, 2026-07-16):** in chain-anchored mode
+**Shipped (chain-anchored verify, 2026-07-16):** in chain-anchored mode
 (`verify … --univocity --log-id <child> --rpc-url`) the CLI recomputes the peak
 locally from the leaf commitment (`SHA-256(idtimestamp ‖ SHA-256(payload))`) and
 the receipt's proof path — **no signature involved** — and byte-matches it
@@ -185,7 +184,7 @@ when it reports `delegation_invalid` the cause is an **unanchored child log**,
 not a verify bug — either the forest predates univocity v0.1.8, or the chain
 has not settled yet (see the two notes above).
 
-**Still open (FOR-297 approach A):** purely-offline child verify needs the
+**Still open (offline grant-chain verify):** purely-offline child verify needs the
 multi-hop grant-chain resolver in `@forestrie/receipt-verify` (walk genesis →
 auth grant [root-signed] → data grant [David-signed, grantData=Alice] → Alice's
 delegation cert; every link is a self-servable receipted leaf) plus CLI plumbing

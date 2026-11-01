@@ -48,7 +48,7 @@ shipped (--known-log-key, no genesis needed; wrong key reports known_key_mismatc
 extends older receipts via --massif, fails newer ones closed).
 Deliberately OFF the ladder: the offline genesis-rooted grant-chain walk (child-log authority
 proven from public tiles, the "derived binding" enhancement). It is not yet implementable, so it
-stays out of the demo until it can be run live like everything else here — tracked as FOR-419. If
+stays out of the demo until it can be run live like everything else here. If
 asked on stage: child-log authority today is discharged on-chain by the contract at publish (rungs
 2-3); the fully-offline proof is future work.
 -->

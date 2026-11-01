@@ -26,7 +26,7 @@ Mechanics of the closer: recompute leaf = SHA-256(idtimestamp ‖ SHA-256(statem
 receipt's proof path to a peak, byte-match it against logState(dataLog) on univocity. No local
 signature check — and per this slide's argument that is the STRONGER claim, not a concession.
 The signature row now prints "ok — verified against accumulator from chain — signature enforced
-by univocity at publish" (FOR-297 D2, landed on the for-297 branch).
+by univocity at publish".
 Contract facts backing a/b/c (checked in _Univocity.sol publishCheckpoint): the grant is presented
 and inclusion-verified against the owner log's CURRENT on-chain state on EVERY publish, not just
 the first checkpoint; bounds are size-based (maxHeight / minGrowth — rule 4), so say "within its
@@ -34,8 +34,8 @@ authorized bounds" rather than wall-clock "expired"; with delegation, the owner 
 delegation and the delegate signs the receipt (rule 5); the root's first checkpoint requires the
 self-referential grant signed by the deploy-bound bootstrap key (rule 1) — that is where the
 transitivity in (c) grounds out.
-Purely-offline child verify (no chain access) needs the FOR-297 multi-hop grant-chain resolver, or
-a caller-supplied --known-log-key (standard SCITT RP posture) — both in flight; see status-2607-09.
+Purely-offline child verify (no chain access) needs the multi-hop grant-chain resolver, or
+a caller-supplied --known-log-key (standard SCITT RP posture) — both in flight.
 If asked "what if the log grew since my receipt?": the old proof EXTENDS — append the ancestor
 nodes (public tiles) from the old peak to the covering peak of the newer accumulator and match
 that. Old-accumulator compatibility (Reyzin–Yakoubov) — next slide's first bullet.
