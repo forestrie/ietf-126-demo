@@ -22,9 +22,9 @@ Most subcommands are implemented and tested, including `complete-grant`
 (FOR-344, landed 2026-07-12) and `create-receipt`'s chain-anchored (report-only)
 mode. Two authority verbs — **`create-log`** and **`delegate`** — are **tbd**
 (FOR-390,
-[plan-2607-21](https://github.com/forestrie/devdocs/blob/main/plans/plan-2607-21-cli-authority-commands-demo.md);
+[plan-2607-21](https://github.com/forestrie/work/blob/main/plans/plan-2607-21-cli-authority-commands-demo.md);
 taxonomy in
-[ADR-0052](https://github.com/forestrie/devdocs/blob/main/archive/2607/adr/adr-0052-cli-authority-taxonomy.md)).
+[ADR-0052](https://github.com/forestrie/devdocs/blob/main/adr/adr-0052-cli-authority-taxonomy.md)).
 This outline is their acceptance script — the beats below are exactly what they
 must run against lane-A.
 
