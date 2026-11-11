@@ -334,9 +334,9 @@ trap on_exit EXIT
 if [ "$LOGS_ONLY" = 1 ]; then
   step "--logs-only: reuse the forest in $SHARED/demo.env (R1–R5 skipped)"
   reuse_forest
-  rm -f "$SHARED/demo.state"
   step "R4 again — renew the root's sealing delegation (it lasts 6 h)"
   delegate_root
+  rm -f "$SHARED/demo.state"
 else
   # R1 replaces Robert's key and R3 the genesis, so the previous forest's
   # demo.env is wrong from R1 on. Until this forest's is written there is
