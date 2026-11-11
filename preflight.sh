@@ -130,10 +130,10 @@ require_anchor_waits() {
 # --- all shared, cross-slide state lives here (gitignored) ---
 SHARED=".output/shared"
 mkdir -p "$SHARED"
-# The slides load demo.state over demo.env, so handoffs an earlier forest's
-# slides saved (log ids, entry ids) would point this forest's slides at the
-# old logs. A fresh forest makes all of them stale.
-rm -f "$SHARED/demo.state"
+# The slides load demo.state over demo.env, so handoffs an earlier run's
+# slides saved (log ids, entry ids) would point these slides at old logs.
+# It is cleared below once this run commits to a new forest or new logs,
+# not before: a run that fails its checks leaves a working deck alone.
 
 # --- lane-specific config: ONLY the canopy + coordinator endpoints differ
 # between lanes. Since v0.6.0 onboarding is fully self-service (attested +
@@ -328,11 +328,12 @@ trap on_exit EXIT
 if [ "$LOGS_ONLY" = 1 ]; then
   step "--logs-only: reuse the forest in $SHARED/demo.env (R1–R5 skipped)"
   reuse_forest
+  rm -f "$SHARED/demo.state"
 else
   # R1 replaces Robert's key and R3 the genesis, so the previous forest's
   # demo.env is wrong from R1 on. Until this forest's is written there is
   # none: --logs-only and the slides then refuse rather than mix two forests.
-  rm -f "$SHARED/demo.env"
+  rm -f "$SHARED/demo.env" "$SHARED/demo.state"
   FOREST_STARTED=1
   create_forest
 fi
