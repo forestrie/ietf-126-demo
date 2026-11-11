@@ -88,7 +88,7 @@ fetch_forestrie() {
   local base="https://github.com/forestrie/forestrie-cli/releases/download/${FORESTRIE_VERSION}"
   [ "$FORESTRIE_VERSION" = latest ] && base="https://github.com/forestrie/forestrie-cli/releases/latest/download"
   local want got
-  want=$(curl -fsSL "$base/$asset.sha256" | awk '{print $1}')
+  want=$(curl -fsSL "$base/$asset.sha256" 2>/dev/null | awk '{print $1}' || true)
   if [ -z "$want" ]; then
     echo "forestrie ${FORESTRIE_VERSION} ${asset} has no sha256 sidecar" >&2
     return 1
