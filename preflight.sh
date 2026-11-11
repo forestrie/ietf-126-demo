@@ -314,10 +314,13 @@ EOF
 
 # A failure once the forest exists says how to finish without paying again.
 FOREST_READY=0
+FOREST_STARTED=0
 on_exit() {
   local status=$?
   if [ "$status" -ne 0 ] && [ "$FOREST_READY" = 1 ]; then
     printf '\n\033[1;31m%s\033[0m\n' "preflight failed after the forest was ready; $SHARED/demo.env records it. Rerun ./preflight.sh --lane=$LANE --logs-only to create the slide-6 logs again without redeploying or paying." >&2
+  elif [ "$status" -ne 0 ] && [ "$LOGS_ONLY" = 0 ] && [ "$FOREST_STARTED" = 1 ]; then
+    printf '\n\033[1;31m%s\033[0m\n' "preflight failed before the forest was ready (R1–R5), so there is no demo.env. Rerun ./preflight.sh --lane=$LANE for a fresh forest." >&2
   fi
 }
 trap on_exit EXIT
@@ -326,6 +329,11 @@ if [ "$LOGS_ONLY" = 1 ]; then
   step "--logs-only: reuse the forest in $SHARED/demo.env (R1–R5 skipped)"
   reuse_forest
 else
+  # R1 replaces Robert's key and R3 the genesis, so the previous forest's
+  # demo.env is wrong from R1 on. Until this forest's is written there is
+  # none: --logs-only and the slides then refuse rather than mix two forests.
+  rm -f "$SHARED/demo.env"
+  FOREST_STARTED=1
   create_forest
 fi
 write_demo_env
