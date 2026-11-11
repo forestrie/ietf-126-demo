@@ -62,9 +62,9 @@ done
 # --- forestrie CLI: fetched from a GitHub release (gitignored, never committed) ---
 FORESTRIE_VERSION="${FORESTRIE_VERSION:-v0.15.0}"
 
-# SHA-256 of the default release's binaries, checked as well as the release's
-# own sidecar, so a replaced release asset is caught. An overridden
-# FORESTRIE_VERSION is checked against its sidecar only.
+# SHA-256 of the default release's binaries, so a replaced release asset is
+# caught. An overridden FORESTRIE_VERSION is checked against its release's
+# .sha256 sidecar instead.
 pinned_sha256() { # $1=asset
   [ "$FORESTRIE_VERSION" = v0.15.0 ] || return 0
   case "$1" in
@@ -73,14 +73,18 @@ pinned_sha256() { # $1=asset
   esac
 }
 
-# Download the pinned release binary for this platform into ./forestrie, verify
-# its sha256 sidecar, and mark it executable. Idempotent: reuses an already-
-# present matching version.
-fetch_forestrie() {
-  if [ -x ./forestrie ] && ./forestrie --version 2>/dev/null | grep -q "${FORESTRIE_VERSION#v}"; then
-    echo "  reuse ./forestrie (${FORESTRIE_VERSION})"
-    return 0
+sha256_of() { # $1=file
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
   fi
+}
+
+# Put the release binary for this platform at ./forestrie, verified against its
+# pinned SHA-256 or its release's sidecar. An existing ./forestrie is reused
+# only when it hashes to the same value.
+fetch_forestrie() {
   local os arch asset
   os=$(uname -s); arch=$(uname -m)
   case "$os/$arch" in
@@ -91,29 +95,42 @@ fetch_forestrie() {
       return 1 ;;
   esac
   local base="https://github.com/forestrie/forestrie-cli/releases/download/${FORESTRIE_VERSION}"
-  curl -fsSL "$base/$asset" -o ./forestrie.download
   local want got
-  want=$(curl -fsSL "$base/$asset.sha256" | awk '{print $1}')
-  if command -v sha256sum >/dev/null 2>&1; then
-    got=$(sha256sum ./forestrie.download | awk '{print $1}')
-  else
-    got=$(shasum -a 256 ./forestrie.download | awk '{print $1}')
+  want=$(pinned_sha256 "$asset")
+  if [ -z "$want" ]; then
+    want=$(curl -fsSL "$base/$asset.sha256" | awk '{print $1}')
+    if [ -z "$want" ]; then
+      echo "forestrie ${FORESTRIE_VERSION} ${asset} has no sha256 sidecar" >&2
+      return 1
+    fi
   fi
-  if [ -z "$want" ] || [ "$want" != "$got" ]; then
-    rm -f ./forestrie.download
-    echo "forestrie ${FORESTRIE_VERSION} ${asset} sha256 mismatch (want ${want:-<none>}, got ${got})" >&2
-    return 1
+  if [ -x ./forestrie ] && [ "$(sha256_of ./forestrie)" = "$want" ]; then
+    echo "  reuse ./forestrie (${FORESTRIE_VERSION}, ${asset})"
+    return 0
   fi
-  local pinned
-  pinned=$(pinned_sha256 "$asset")
-  if [ -n "$pinned" ] && [ "$pinned" != "$got" ]; then
+  curl -fsSL "$base/$asset" -o ./forestrie.download
+  got=$(sha256_of ./forestrie.download)
+  if [ "$want" != "$got" ]; then
     rm -f ./forestrie.download
-    echo "forestrie ${FORESTRIE_VERSION} ${asset} is not the pinned build (want ${pinned}, got ${got})" >&2
+    echo "forestrie ${FORESTRIE_VERSION} ${asset} sha256 mismatch (want ${want}, got ${got})" >&2
     return 1
   fi
   chmod +x ./forestrie.download
   mv ./forestrie.download ./forestrie
   echo "  fetched ./forestrie (${FORESTRIE_VERSION}, ${asset})"
+}
+
+# R5-R7 wait for anchoring. A CLI older than v0.15.0 would ignore
+# --wait-anchored without a word and the slide-6 writes would be refused, so
+# an older FORESTRIE_VERSION is refused here, before anything costs money.
+require_cli_floor() {
+  local v major minor
+  v=$(./forestrie --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+  IFS=. read -r major minor _ <<< "${v:-0.0.0}"
+  if [ "$major" -eq 0 ] && [ "$minor" -lt 15 ]; then
+    echo "./forestrie ${v:-<unknown version>} predates v0.15.0, which waits for a log to anchor; set FORESTRIE_VERSION to v0.15.0 or later" >&2
+    return 1
+  fi
 }
 
 # --- all shared, cross-slide state lives here (gitignored) ---
@@ -188,6 +205,7 @@ done
 # --- forestrie CLI binary (fetched, not built/committed) ---
 step "forestrie CLI — fetch ${FORESTRIE_VERSION} release binary"
 fetch_forestrie
+require_cli_floor
 
 # --- R1–R5: a fresh forest, or (--logs-only) the one demo.env records ---
 create_forest() {
