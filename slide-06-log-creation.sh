@@ -5,9 +5,16 @@
 # Authorization is a SCITT grant statement. The data-log create+extend grant
 # names its writer in grantData — that grant IS the write authorization (no
 # separate step). Each log's sealing is delegated by that log's key holder.
+#
+# A new log's authority counts only once it is anchored: its owner must have
+# published, on chain, a checkpoint covering the log's create grant. That
+# takes a minute or two per level, so preflight (R6, R7) created David's and
+# Alice's logs with the commands narrated below. On stage the slide proves
+# both are anchored, from public chain data alone, and Alice writes.
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/demo-lib.sh"
 demo_init 06
+require_slide6_logs
 
 # Self-serve a receipt for <entry-id> in <log-id> from that log's public tile,
 # into <dir>/receipt.cbor. Massif height on lane-A is 14, first tile index 0.
@@ -21,51 +28,31 @@ self_serve_receipt() { # $1=log-id  $2=entry-id  $3=out-dir
 		--entry-id "$eid" --out "$d/receipt.cbor"
 }
 
-note "two fresh log ids: David's auth log, and Alice's data log that will live under it"
-run 'export DAVID_AUTH_LOG_ID=$(uuidgen | tr "A-Z" "a-z")
-export ALICE_DATA_LOG_ID=$(uuidgen | tr "A-Z" "a-z")
-echo "  david auth log: $DAVID_AUTH_LOG_ID"
+note "preflight built the hierarchy: David's auth log under Robert's root, Alice's data log under David's"
+run 'echo "  david auth log: $DAVID_AUTH_LOG_ID"
 echo "  alice data log: $ALICE_DATA_LOG_ID"'
 
-# 1. Robert creates David's AUTH log (grantData = David → David holds it).
-note "1. Robert creates David's AUTH log (grantData = David → David holds it)"
-note "prepare: pre-register David's log root at the coordinator (no sequencing yet), so we can delegate BEFORE the log exists — parent-authorized by Robert's root grant, no operator token"
-run './forestrie create-log --prepare --base-url "$FORESTRIE_BASE_URL" \
-	--owner-log "$ROBERT_LOG_ID" --new-log "$DAVID_AUTH_LOG_ID" --auth-log \
-	--signer-pem "$DAVID_PEM" --sign-with "$ROBERT_PEM" \
-	--parent-grant-b64 "$ROOT_GRANT_B64" --out-b64 "$S/auth-grant.b64"'
+# 1. Robert created David's AUTH log (grantData = David → David holds it).
+note "1. Robert created David's AUTH log (grantData = David → David holds it), in three steps:"
+note "prepare: pre-register David's log root, claimed once for this log id — parent-authorized by Robert's root grant, no operator token"
+note '  forestrie create-log --prepare --owner-log "$ROBERT_LOG_ID" --new-log "$DAVID_AUTH_LOG_ID" --auth-log --signer-pem "$DAVID_PEM" --sign-with "$ROBERT_PEM" …'
+note "delegate: David approves the operator's sealer for his log, before its first checkpoint"
+note '  forestrie delegate --log-id "$DAVID_AUTH_LOG_ID" --sign-with "$DAVID_PEM" --known-sealer-key "$KNOWN_SEALER_KEY" …'
+note "create: the same call without --prepare sequences the create grant into Robert's log, and waits until it is anchored"
+note '  forestrie create-log … --wait-anchored --genesis "$GENESIS"'
 
-note "delegate: David approves the operator's sealer for his log (a delegation cert) — must land before the log's first checkpoint, which is why prepare comes first"
-run './forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
-	--log-id "$DAVID_AUTH_LOG_ID" --sign-with "$DAVID_PEM" --known-sealer-key "$KNOWN_SEALER_KEY"'
-
-note "create: the SAME call, now WITHOUT --prepare, sequences the create grant into Robert's log — this actually opens David's log; sealing is already delegated so its first checkpoint seals in seconds"
-run './forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
-	--owner-log "$ROBERT_LOG_ID" --new-log "$DAVID_AUTH_LOG_ID" --auth-log \
-	--signer-pem "$DAVID_PEM" --sign-with "$ROBERT_PEM" \
-	--parent-grant-b64 "$ROOT_GRANT_B64" --out-b64 "$S/auth-grant.b64"
-export AUTH_GRANT_B64=$(cat "$S/auth-grant.b64")'
-
-# 2. David grants Alice a DATA log to write to: grantData = Alice, signed by
+# 2. David granted Alice a DATA log to write to: grantData = Alice, signed by
 #    David (the auth-log holder). This grant IS Alice's write authorization.
-#    Alice, as the data-log key holder, delegates its sealing.
-note '2. David grants Alice a DATA log: grantData = Alice, signed by David'
-note "prepare: same two-step, one level down — pre-register Alice's data-log root at the coordinator (owner is now David's auth log, not Robert's root)"
-run './forestrie create-log --prepare --base-url "$FORESTRIE_BASE_URL" \
-	--owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" --bootstrap-log "$ROBERT_LOG_ID" --data-log \
-	--signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM" \
-	--parent-grant-b64 "$AUTH_GRANT_B64" --out-b64 "$S/alice-data-grant.b64"'
+#    Alice, as the data-log key holder, delegated its sealing.
+note "2. David granted Alice a DATA log the same way, one level down: grantData = Alice, signed by David, sequenced into David's auth log"
+note '  forestrie create-log … --owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" --signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM" --wait-anchored'
 
-note "delegate: Alice (the data-log key holder) approves the sealer for HER log — each log's sealing is delegated by its own owner, never by the parent"
-run './forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
-	--log-id "$ALICE_DATA_LOG_ID" --sign-with "$ALICE_PEM" --known-sealer-key "$KNOWN_SEALER_KEY"'
-
-note "create: sequence Alice's create grant into David's auth log — grantData = Alice, so this grant IS Alice's write authorization (no separate register-grant step)"
-run './forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
-	--owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" --bootstrap-log "$ROBERT_LOG_ID" --data-log \
-	--signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM" \
-	--parent-grant-b64 "$AUTH_GRANT_B64" --out-b64 "$S/alice-data-grant.b64"
-export ALICE_GRANT_B64=$(cat "$S/alice-data-grant.b64")'
+# The proof the waits rely on: each create grant's leaf, hashed up its
+# receipt's path, reaches a peak its owner published on chain (or the chain
+# has recorded the log under that owner and key). No operator answer counts.
+note "a new log's authority is used only once anchored: a checkpoint its owner published on chain covers its create grant, or the chain already records the log under that owner and key — proven here from public chain data alone"
+run './forestrie log wait-anchored --create-grant "$AUTH_GRANT" --genesis "$GENESIS" --timeout 60'
+run './forestrie log wait-anchored --create-grant "$ALICE_GRANT" --genesis "$GENESIS" --timeout 60'
 
 # 3. Alice writes to her data log. Child logs register via the FOREST (root)
 #    path — /register/{root}/entries — and the grant directs the statement to the
@@ -89,6 +76,7 @@ note "4. Alice's receipt is self-servable offline from her data-log tile (as in 
 run 'retry self_serve_receipt "$ALICE_DATA_LOG_ID" "$ALICE_ENTRY_ID" "$S/adata"
 echo "Alice: registered under David'"'"'s SCITT grant, self-servable: $S/adata/receipt.cbor"'
 
-# handoffs slide 7 reuses (it verifies exactly these bytes)
+# handoffs slide 7 reuses (it verifies exactly these bytes); the log ids come
+# from demo.env
 export ALICE_STMT="$S/alice.cose" ALICE_RECEIPT="$S/adata/receipt.cbor"
-save_state DAVID_AUTH_LOG_ID ALICE_DATA_LOG_ID ALICE_ENTRY_ID ALICE_STMT ALICE_RECEIPT
+save_state ALICE_ENTRY_ID ALICE_STMT ALICE_RECEIPT

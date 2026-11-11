@@ -19,12 +19,14 @@
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/demo-lib.sh"
 demo_init 07
+require_slide6_logs
 
-# Alice's data log anchors only AFTER David's auth log does — univocity checks
-# the grant against the owner's on-chain state, so the chain root -> auth ->
-# data settles one link at a time (~2 min after slide 6 on lane-A). Silently
-# wait for it rather than fail the closer on stage. This is coverage lag, not
-# a failure: the verify below is the real assertion.
+# Preflight anchored Alice's data log (David's published checkpoint covers its
+# create grant), but the peak matched below is in the data log's OWN on-chain
+# accumulator, which exists only once its first checkpoint — the one covering
+# her slide-6 statement — is published. Silently wait for it rather than fail
+# the closer on stage. This is coverage lag, not a failure: the verify below
+# is the real assertion.
 anchored() { # $1=log-id — true once the log has any on-chain accumulator
 	local st
 	st=$(~/.foundry/bin/cast call "$UNIVOCITY_ADDRESS" \
