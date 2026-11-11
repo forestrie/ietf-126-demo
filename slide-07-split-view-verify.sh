@@ -19,6 +19,7 @@
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/demo-lib.sh"
 demo_init 07
+require_slide6_logs
 
 # Preflight anchored Alice's data log (David's published checkpoint covers its
 # create grant), but the peak matched below is in the data log's OWN on-chain

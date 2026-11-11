@@ -14,10 +14,7 @@
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/demo-lib.sh"
 demo_init 06
-if [ -z "${AUTH_GRANT_B64:-}" ] || [ -z "${ALICE_GRANT_B64:-}" ]; then
-	printf '\033[1;31m%s\033[0m\n' "demo.env names no slide-6 logs: preflight did not finish R6 and R7. Run ./preflight.sh --logs-only (same --lane) first." >&2
-	exit 1
-fi
+require_slide6_logs
 
 # Self-serve a receipt for <entry-id> in <log-id> from that log's public tile,
 # into <dir>/receipt.cbor. Massif height on lane-A is 14, first tile index 0.

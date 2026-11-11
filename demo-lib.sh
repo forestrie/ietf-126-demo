@@ -38,6 +38,16 @@ demo_init() {
 	printf '\n\033[1;36m━━━ slide %s ━━━\033[0m\n' "$n"
 }
 
+# require_slide6_logs — stop unless preflight finished R6 and R7. A failed
+# R6 or R7 leaves their demo.env values empty, and the slides that use them
+# would fail on stage with the CLI's own errors.
+require_slide6_logs() {
+	if [ -z "${AUTH_GRANT_B64:-}" ] || [ -z "${ALICE_GRANT_B64:-}" ] || [ -z "${ALICE_DATA_LOG_ID:-}" ]; then
+		printf '\033[1;31m%s\033[0m\n' "demo.env names no slide-6 logs: preflight did not finish R6 and R7. Run ./preflight.sh --logs-only (same --lane) first." >&2
+		exit 1
+	fi
+}
+
 # pause — wait for any key. Reads the tty directly so it still works when the
 # script's stdin is a pipe.
 pause() {
