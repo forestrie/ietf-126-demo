@@ -17,7 +17,7 @@ heirarchy of logs rooted at Roberts, and extending down to David and Alice
 # DATA log to write to (grantData = Alice, signed by David). Each log's sealing is
 # delegated by that log's key holder (auth → David, data → Alice):
 forestrie create-log … --owner-log "$ROBERT_LOG_ID"     --new-log "$DAVID_AUTH_LOG_ID"  --auth-log --signer-pem "$DAVID_PEM" --sign-with "$ROBERT_PEM"
-forestrie create-log … --owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" --data-log --signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM"
+forestrie create-log … --owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" --signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM"
 
 # Alice writes to her data log — child logs register via the FOREST (root) path;
 # the grant directs the statement to the data log. Her statement carries her own

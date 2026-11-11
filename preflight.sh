@@ -366,7 +366,7 @@ export ALICE_GRANT="$SHARED/alice-data-grant.b64"
 alice_create_log() { # $@ = extra flags
   ./forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
     --owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" \
-    --bootstrap-log "$ROBERT_LOG_ID" --data-log \
+    --bootstrap-log "$ROBERT_LOG_ID" \
     --signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM" \
     --parent-grant-b64 "$AUTH_GRANT_B64" --out-b64 "$ALICE_GRANT" "$@"
 }

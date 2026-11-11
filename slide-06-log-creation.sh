@@ -44,7 +44,7 @@ note '  forestrie create-log … --wait-anchored --genesis "$GENESIS"'
 #    David (the auth-log holder). This grant IS Alice's write authorization.
 #    Alice, as the data-log key holder, delegated its sealing.
 note "2. David granted Alice a DATA log the same way, one level down: grantData = Alice, signed by David, sequenced into David's auth log"
-note '  forestrie create-log … --owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" --data-log --signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM" --wait-anchored'
+note '  forestrie create-log … --owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" --signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM" --wait-anchored'
 
 # The proof the waits rely on: each create grant's leaf, hashed up its
 # receipt's path, reaches a peak its owner published on chain (or the chain
