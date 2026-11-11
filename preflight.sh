@@ -107,6 +107,10 @@ fetch_forestrie() {
 # --- all shared, cross-slide state lives here (gitignored) ---
 SHARED=".output/shared"
 mkdir -p "$SHARED"
+# The slides load demo.state over demo.env, so handoffs an earlier forest's
+# slides saved (log ids, entry ids) would point this forest's slides at the
+# old logs. A fresh forest makes all of them stale.
+rm -f "$SHARED/demo.state"
 
 # --- lane-specific config: ONLY the canopy + coordinator endpoints differ
 # between lanes. Since v0.6.0 onboarding is fully self-service (attested +
