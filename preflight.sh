@@ -202,6 +202,14 @@ fetch_forestrie
 require_anchor_waits
 echo "  forestrie $(./forestrie --version)"
 
+# The root's standing sealing delegation lasts 6 h. R6 needs the root to seal
+# and publish David's grant, so --logs-only renews it as R4 first made it.
+delegate_root() {
+  ./forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
+    --log-id "$ROBERT_LOG_ID" --sign-with "$ROBERT_PEM" \
+    --known-sealer-key "$KNOWN_SEALER_KEY"
+}
+
 # --- R1–R5: a fresh forest, or (--logs-only) the one demo.env records ---
 create_forest() {
   # --- R1: deploy a fresh univocity instance (fresh bootstrap key) ---
@@ -250,9 +258,7 @@ create_forest() {
 
   # --- R4: pre-delegate root sealing (before the first write) ---
   step "R4 — pre-delegate root sealing to the vouched standing sealer key"
-  ./forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
-    --log-id "$ROBERT_LOG_ID" --sign-with "$ROBERT_PEM" \
-    --known-sealer-key "$KNOWN_SEALER_KEY"
+  delegate_root
 
   # --- R5: mint the self-referential root grant ---
   # A root is anchored once its contract holds the genesis key, so the wait
@@ -329,6 +335,8 @@ if [ "$LOGS_ONLY" = 1 ]; then
   step "--logs-only: reuse the forest in $SHARED/demo.env (R1–R5 skipped)"
   reuse_forest
   rm -f "$SHARED/demo.state"
+  step "R4 again — renew the root's sealing delegation (it lasts 6 h)"
+  delegate_root
 else
   # R1 replaces Robert's key and R3 the genesis, so the previous forest's
   # demo.env is wrong from R1 on. Until this forest's is written there is
