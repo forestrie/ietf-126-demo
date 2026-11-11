@@ -16,6 +16,8 @@ the talk you cut between a **Slides** scene and a **Terminal** scene (see
 # 1. one-time prep: deploy a fresh forest, create and anchor the slide-6 logs,
 #    and write .output/shared/demo.env
 ./preflight.sh
+#    if it fails after R5 (the forest is paid for), create the logs again:
+#    ./preflight.sh --logs-only     (same --lane)
 
 # 2. drive the deck (presenter view with notes on your 2nd screen)
 pnpm install
@@ -32,9 +34,10 @@ talk over each command before it executes. No `source` needed: every script
 loads `.output/shared/demo.env` itself and exits with a clear error if
 `preflight.sh` hasn't run.
 
-Cross-slide handoffs (`ENTRY_ID`, `STMT`, `RECEIPT`, Alice's ids …) pass through
-`.output/shared/demo.state`, which each script sources on entry and updates on
-exit. So the scripts run in **separate shells**, in deck order, and a slide can
+Cross-slide handoffs (`ENTRY_ID`, `STMT`, `RECEIPT`, Alice's entry …) pass
+through `.output/shared/demo.state`, which each script sources on entry and
+updates on exit; the slide-6 log ids come from `demo.env`. Preflight clears
+`demo.state`, since a fresh forest makes every handoff stale. So the scripts run in **separate shells**, in deck order, and a slide can
 be re-run without re-running the whole deck. Per-slide scratch lands in
 `.output/slide-NN/`.
 
@@ -95,7 +98,7 @@ captured). Cut to **Terminal** for each live demo, back to **Slides** to narrate
 | 3 Self-serve | `slide-03-self-serve.sh` | derive the same receipt from the public tile | ✅ pass |
 | 4 Throughput | `slide-04-throughput.sh` | 100 statements → one checkpoint → 100 offline receipts | ✅ pass (100/100, 4.3s submit / 2.6s seal / 3.4s receipts) |
 | 5 Split-view | `slide-05-split-view.sh` | throwaway deploy + on-chain `bootstrapConfig` | ✅ pass (on-chain bootstrap key == slide 2's signing `kid`) |
-| 6 Log creation | `slide-06-log-creation.sh` | the auth→data hierarchy preflight built, proven anchored; Alice writes, self-serve her receipt | ✅ pass (as a live build) |
+| 6 Log creation | `slide-06-log-creation.sh` | the auth→data hierarchy preflight built, proven anchored; Alice writes, self-serve her receipt | ⏳ rehearse after the cutover (July: ✅ pass, built live on stage) |
 | 7 Split-view verify | `slide-07-split-view-verify.sh` | **chain-anchored verify** + trust-ladder rungs 1 & 3 | ✅ pass (needs univocity **≥ v0.1.8** — see below) |
 | 9 Roundup | `slide-09-roundup.sh` | the root-log closer | ✅ pass |
 
@@ -125,8 +128,9 @@ Lane B is not stale, merely under-exercised. Previously rehearsed 2026-07-17 in 
 
 Delegation is healthy throughout: preflight R4 pre-delegates the root before the
 first write, and preflight R6/R7 pre-delegate each child (`create-log --prepare`
-→ `delegate` → `create-log --wait-anchored`). The sealer logs show no errors and every child log
-seals. **Sealing is not the problem; the on-chain publish is.**
+→ `delegate` → `create-log --wait-anchored`). In the July rehearsal, which built
+the children on stage, the sealer logs showed no errors and every child log
+sealed. **Sealing is not the problem; the on-chain publish is.**
 
 ### Slide 7 needs univocity ≥ v0.1.8 — the lone-peak grant leaf (FIXED)
 

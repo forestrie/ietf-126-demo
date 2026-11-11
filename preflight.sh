@@ -2,9 +2,9 @@
 #
 # preflight.sh — everything the demo needs BEFORE the first on-stage step.
 #
-# Runs the rehearsal preflight (R1–R5 of the demo outline) against the selected
+# Runs the rehearsal preflight (R1–R7 of the demo outline) against the selected
 # lane — pass --lane=a or --lane=b (default b). The lane only picks a handful of
-# endpoints + the ops-admin token source; the R1–R5 steps and every slide-NN
+# endpoints + the ops-admin token source; the R1–R7 steps and every slide-NN
 # script are lane-agnostic (they read the generated demo.env):
 #   R1  deploy a fresh univocity instance (generates Robert's ES256 bootstrap key)
 #   R2  operator-onboard the root genesis (mint onboard token + POST genesis)
