@@ -49,7 +49,7 @@ note '  forestrie create-log … --owner-log "$DAVID_AUTH_LOG_ID" --new-log "$AL
 # The proof the waits rely on: each create grant's leaf, hashed up its
 # receipt's path, reaches a peak its owner published on chain (or the chain
 # has recorded the log under that owner and key). No operator answer counts.
-note "a new log's authority is used only once anchored: a checkpoint its owner published on chain covers its create grant — proven here from public chain data alone"
+note "a new log's authority is used only once anchored: a checkpoint its owner published on chain covers its create grant, or the chain already records the log under that owner and key — proven here from public chain data alone"
 run './forestrie log wait-anchored --create-grant "$AUTH_GRANT" --genesis "$GENESIS" --timeout 60'
 run './forestrie log wait-anchored --create-grant "$ALICE_GRANT" --genesis "$GENESIS" --timeout 60'
 
