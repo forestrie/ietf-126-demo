@@ -18,6 +18,9 @@ the talk you cut between a **Slides** scene and a **Terminal** scene (see
 ./preflight.sh
 #    if it fails after R5 (the forest is paid for), create the logs again:
 #    ./preflight.sh --logs-only     (same --lane)
+#    Run it within 6 h of the talk: the coordinator's standing sealing
+#    delegations it signs (R4, R6, R7) last 6 h, and slide 6 seals Alice's log
+#    under hers.
 
 # 2. drive the deck (presenter view with notes on your 2nd screen)
 pnpm install

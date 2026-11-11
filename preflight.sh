@@ -388,7 +388,8 @@ cat <<EOF
 Preflight complete. The forest is deployed, onboarded, delegated, and granted,
 and David's auth log and Alice's data log under it are anchored.
 
-Start the demo:
+Start the demo within 6 h: the standing sealing delegations signed here
+(R4, R6, R7) last 6 h, and slide 6 seals Alice's log under hers.
 
   source $SHARED/demo.env
 
