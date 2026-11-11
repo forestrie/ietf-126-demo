@@ -34,8 +34,9 @@
 # never depends on prior state. Persona keys (David/Alice/Bob) are stable —
 # generated once if absent. Requires: doppler auth (canopy/dev for lane a,
 # system-testing/stg for lane b), node, jq, openssl, curl, uuidgen. The forestrie CLI
-# binary is FETCHED from the public GitHub release (no build, nothing checked
-# in) — pin with FORESTRIE_VERSION (v0.15.0 or later: it waits for anchoring).
+# binary is FETCHED from the latest public GitHub release (no build, nothing
+# checked in) and checked against the release's .sha256 sidecar. To freeze the
+# version you rehearsed with, set FORESTRIE_VERSION=vX.Y.Z.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -60,18 +61,8 @@ for tool in doppler jq openssl curl uuidgen; do
 done
 
 # --- forestrie CLI: fetched from a GitHub release (gitignored, never committed) ---
-FORESTRIE_VERSION="${FORESTRIE_VERSION:-v0.15.0}"
-
-# SHA-256 of the default release's binaries, so a replaced release asset is
-# caught. An overridden FORESTRIE_VERSION is checked against its release's
-# .sha256 sidecar instead.
-pinned_sha256() { # $1=asset
-  [ "$FORESTRIE_VERSION" = v0.15.0 ] || return 0
-  case "$1" in
-    forestrie-darwin-arm64) echo b66c822fe99671fab13efd62ce0fa75e38b5bf730b0edec8d01020579b00edfb ;;
-    forestrie-linux-x64)    echo c93bfb0de2332571d7126341b57ad2ec1768209733b513819e92e90cc2096069 ;;
-  esac
-}
+# "latest" follows the newest release; a tag (vX.Y.Z) freezes one.
+FORESTRIE_VERSION="${FORESTRIE_VERSION:-latest}"
 
 sha256_of() { # $1=file
   if command -v sha256sum >/dev/null 2>&1; then
@@ -82,8 +73,8 @@ sha256_of() { # $1=file
 }
 
 # Put the release binary for this platform at ./forestrie, verified against its
-# pinned SHA-256 or its release's sidecar. An existing ./forestrie is reused
-# only when it hashes to the same value.
+# release's .sha256 sidecar. An existing ./forestrie is reused only when it
+# hashes to the sidecar's value, so it is always the release asked for.
 fetch_forestrie() {
   local os arch asset
   os=$(uname -s); arch=$(uname -m)
@@ -95,14 +86,12 @@ fetch_forestrie() {
       return 1 ;;
   esac
   local base="https://github.com/forestrie/forestrie-cli/releases/download/${FORESTRIE_VERSION}"
+  [ "$FORESTRIE_VERSION" = latest ] && base="https://github.com/forestrie/forestrie-cli/releases/latest/download"
   local want got
-  want=$(pinned_sha256 "$asset")
+  want=$(curl -fsSL "$base/$asset.sha256" | awk '{print $1}')
   if [ -z "$want" ]; then
-    want=$(curl -fsSL "$base/$asset.sha256" | awk '{print $1}')
-    if [ -z "$want" ]; then
-      echo "forestrie ${FORESTRIE_VERSION} ${asset} has no sha256 sidecar" >&2
-      return 1
-    fi
+    echo "forestrie ${FORESTRIE_VERSION} ${asset} has no sha256 sidecar" >&2
+    return 1
   fi
   if [ -x ./forestrie ] && [ "$(sha256_of ./forestrie)" = "$want" ]; then
     echo "  reuse ./forestrie (${FORESTRIE_VERSION}, ${asset})"
@@ -120,15 +109,20 @@ fetch_forestrie() {
   echo "  fetched ./forestrie (${FORESTRIE_VERSION}, ${asset})"
 }
 
-# R5-R7 wait for anchoring. A CLI older than v0.15.0 would ignore
+# R5-R7 and slide 6 wait for anchoring. A CLI without the waits would ignore
 # --wait-anchored without a word and the slide-6 writes would be refused, so
-# an older FORESTRIE_VERSION is refused here, before anything costs money.
-require_cli_floor() {
-  local v major minor
-  v=$(./forestrie --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
-  IFS=. read -r major minor _ <<< "${v:-0.0.0}"
-  if [ "$major" -eq 0 ] && [ "$minor" -lt 15 ]; then
-    echo "./forestrie ${v:-<unknown version>} predates v0.15.0, which waits for a log to anchor; set FORESTRIE_VERSION to v0.15.0 or later" >&2
+# one is refused here, before anything costs money. Each command's help must
+# list an option only it has: for an unknown subcommand the CLI prints its
+# parent's usage and exits 0.
+require_anchor_waits() {
+  local wait_help create_help v
+  wait_help=$(./forestrie log wait-anchored --help 2>&1 || true)
+  create_help=$(./forestrie create-log --help 2>&1 || true)
+  case "$wait_help" in *--create-grant*) ;; *) wait_help= ;; esac
+  case "$create_help" in *--wait-anchored*) ;; *) create_help= ;; esac
+  if [ -z "$wait_help" ] || [ -z "$create_help" ]; then
+    v=$(./forestrie --version 2>/dev/null || true)
+    echo "./forestrie ${v:-<unknown version>} cannot wait for a log to anchor (log wait-anchored, create-log --wait-anchored); set FORESTRIE_VERSION to a release that can" >&2
     return 1
   fi
 }
@@ -205,7 +199,8 @@ done
 # --- forestrie CLI binary (fetched, not built/committed) ---
 step "forestrie CLI — fetch ${FORESTRIE_VERSION} release binary"
 fetch_forestrie
-require_cli_floor
+require_anchor_waits
+echo "  forestrie $(./forestrie --version)"
 
 # --- R1–R5: a fresh forest, or (--logs-only) the one demo.env records ---
 create_forest() {

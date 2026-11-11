@@ -40,9 +40,17 @@ loads `.output/shared/demo.env` itself and exits with a clear error if
 Cross-slide handoffs (`ENTRY_ID`, `STMT`, `RECEIPT`, Alice's entry …) pass
 through `.output/shared/demo.state`, which each script sources on entry and
 updates on exit; the slide-6 log ids come from `demo.env`. Preflight clears
-`demo.state`, since a fresh forest makes every handoff stale. So the scripts run in **separate shells**, in deck order, and a slide can
-be re-run without re-running the whole deck. Per-slide scratch lands in
-`.output/slide-NN/`.
+`demo.state`, since a fresh forest makes every handoff stale. So the scripts
+run in **separate shells**, in deck order, and a slide can be re-run without
+re-running the whole deck. Per-slide scratch lands in `.output/slide-NN/`.
+
+**forestrie CLI version.** Preflight fetches the latest forestrie-cli release
+into `./forestrie` and checks it against the release's `.sha256` sidecar; a
+later run reuses the binary while it still matches. A release can land between
+rehearsal and the talk, so freeze the one you rehearsed with before
+presenting: run `./forestrie --version`, then pass that tag to every preflight
+run, e.g. `FORESTRIE_VERSION=vX.Y.Z ./preflight.sh --lane=a` (and the same for
+`--logs-only` reruns).
 
 `DEMO_AUTO=1 ./slide-02-publishing.sh` skips every pause — that's how the
 scripts are tested unattended.
@@ -91,9 +99,10 @@ captured). Cut to **Terminal** for each live demo, back to **Slides** to narrate
 > slide-6 hierarchy waits a minute or two for that, so `preflight.sh` now
 > creates David's auth log and Alice's data log (R6, R7) with
 > `create-log --wait-anchored`, and slide 6 proves both anchored with
-> `forestrie log wait-anchored` before Alice writes. This needs forestrie-cli
-> **v0.15.0** or later, the preflight default. The table below predates the
-> change; rehearse the deck again on a freshly reset lane.
+> `forestrie log wait-anchored` before Alice writes. This needs a forestrie-cli
+> release that can wait (v0.15.0 or later); preflight fetches the latest and
+> refuses one that cannot. The table below predates the change; rehearse the
+> deck again on a freshly reset lane.
 
 | Slide | Script | Demo | Status |
 |-------|--------|------|--------|
