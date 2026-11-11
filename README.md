@@ -13,7 +13,8 @@ the talk you cut between a **Slides** scene and a **Terminal** scene (see
 ## Quick start
 
 ```bash
-# 1. one-time prep: deploy a fresh forest + write .output/shared/demo.env
+# 1. one-time prep: deploy a fresh forest, create and anchor the slide-6 logs,
+#    and write .output/shared/demo.env
 ./preflight.sh
 
 # 2. drive the deck (presenter view with notes on your 2nd screen)
@@ -47,7 +48,7 @@ scripts are tested unattended.
 | `slides/NN-*.md` | Marp deck source (one file per slide) — **primary content** |
 | `slide-NN-*.sh` | the tested terminal sequence — one script per slide |
 | `demo-lib.sh` | presenter plumbing: echo → wait for key → run; state handoff |
-| `preflight.sh` | R1–R5 prep → `.output/shared/demo.env` |
+| `preflight.sh` | R1–R7 prep → `.output/shared/demo.env` |
 | `batch-receipts.ts` | Slide 4: N statements → one checkpoint → N offline receipts |
 | `themes/`, `scripts/build-deck.mjs`, `package.json` | Marp build scaffolding |
 | `.output/` | runtime state (gitignored): `shared/` + per-slide `slide-N/` |
@@ -78,13 +79,23 @@ captured). Cut to **Terminal** for each live demo, back to **Slides** to narrate
 
 ## Tested status (2026-07-24, lanes A **and** B, Base Sepolia, fresh preflight)
 
+> **Since 2026-11: logs are anchored before use.** canopy now refuses writes
+> under a new log until its owner has published, on chain, a checkpoint that
+> covers the log's create grant (`409 authority-pending`). Each level of the
+> slide-6 hierarchy waits a minute or two for that, so `preflight.sh` now
+> creates David's auth log and Alice's data log (R6, R7) with
+> `create-log --wait-anchored`, and slide 6 proves both anchored with
+> `forestrie log wait-anchored` before Alice writes. This needs forestrie-cli
+> **v0.15.0** or later, the preflight default. The table below predates the
+> change; rehearse the deck again on a freshly reset lane.
+
 | Slide | Script | Demo | Status |
 |-------|--------|------|--------|
 | 2 Publishing | `slide-02-publishing.sh` | sign → register → **verify offline** | ✅ pass |
 | 3 Self-serve | `slide-03-self-serve.sh` | derive the same receipt from the public tile | ✅ pass |
 | 4 Throughput | `slide-04-throughput.sh` | 100 statements → one checkpoint → 100 offline receipts | ✅ pass (100/100, 4.3s submit / 2.6s seal / 3.4s receipts) |
 | 5 Split-view | `slide-05-split-view.sh` | throwaway deploy + on-chain `bootstrapConfig` | ✅ pass (on-chain bootstrap key == slide 2's signing `kid`) |
-| 6 Log creation | `slide-06-log-creation.sh` | build auth→data hierarchy, Alice writes, self-serve her receipt | ✅ pass |
+| 6 Log creation | `slide-06-log-creation.sh` | the auth→data hierarchy preflight built, proven anchored; Alice writes, self-serve her receipt | ✅ pass (as a live build) |
 | 7 Split-view verify | `slide-07-split-view-verify.sh` | **chain-anchored verify** + trust-ladder rungs 1 & 3 | ✅ pass (needs univocity **≥ v0.1.8** — see below) |
 | 9 Roundup | `slide-09-roundup.sh` | the root-log closer | ✅ pass |
 
@@ -113,8 +124,8 @@ Lane B is not stale, merely under-exercised. Previously rehearsed 2026-07-17 in 
 > 2026-07-23 has the same problem; regenerate it.
 
 Delegation is healthy throughout: preflight R4 pre-delegates the root before the
-first write, and slide 6 pre-delegates each child (`create-log --prepare` →
-`delegate` → `create-log`). The sealer logs show no errors and every child log
+first write, and preflight R6/R7 pre-delegate each child (`create-log --prepare`
+→ `delegate` → `create-log --wait-anchored`). The sealer logs show no errors and every child log
 seals. **Sealing is not the problem; the on-chain publish is.**
 
 ### Slide 7 needs univocity ≥ v0.1.8 — the lone-peak grant leaf (FIXED)
@@ -153,14 +164,15 @@ and all three slide-7 rungs passed.
 `jq -r .releaseId .output/shared/deployment.json`. Note the contracts are
 immutable — **forests deployed before v0.1.8 keep the bug**; re-run preflight.
 
-### Timing: slide 7 waits for the child chain to anchor
+### Timing: the child chain anchors in preflight; slide 7 waits for Alice's checkpoint
 
-Alice's data log can only anchor **after** David's auth log does — univocity
-checks each grant against the owner's *on-chain* state, so `root → auth → data`
-settles one link at a time (~2 min after slide 6 on lane-A). Run slide 7
-immediately after slide 6 and the accumulator is still empty. `slide-07-*.sh`
-therefore polls `logState` until Alice's log is anchored before verifying; it
-is silent, and slide 8 (conceptual) covers the wait on stage.
+Alice's data log can only anchor **after** David's auth log does — univocity checks
+each grant against the owner's *on-chain* state, so `root → auth → data` settles
+one link at a time (a minute or two per link on lane-A). Preflight R6/R7 take that
+wait, off stage. Slide 7 matches a peak in Alice's data log's *own* accumulator,
+which exists once the checkpoint covering her slide-6 statement is published, so
+`slide-07-*.sh` polls `logState` until it is; it is silent, and slide 8
+(conceptual) covers the wait on stage.
 
 ### Child-log verification — chain-anchored (shipped) vs offline (in flight)
 

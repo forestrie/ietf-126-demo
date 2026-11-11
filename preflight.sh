@@ -11,6 +11,13 @@
 #   R3  fetch + cache the public genesis for offline verification
 #   R4  pre-delegate root sealing (so the first checkpoint lands in seconds)
 #   R5  mint the self-referential root grant
+#   R6  create David's auth log under the root, and wait until it is anchored
+#   R7  create Alice's data log under David's, and wait until it is anchored
+#
+# A log's authority is used only once anchored: canopy refuses writes under a
+# new log until its owner has published, on chain, a checkpoint covering the
+# log's create grant. Each level waits for its owner's next checkpoint, a
+# minute or two, so preflight builds the slide-6 hierarchy ahead of time.
 #
 # All generated state lands under .output/shared/ (gitignored). On success it
 # writes .output/shared/demo.env with everything the slides need. Then:
@@ -23,7 +30,7 @@
 # generated once if absent. Requires: doppler auth (canopy/dev for lane a,
 # system-testing/stg for lane b), node, jq, openssl, curl. The forestrie CLI
 # binary is FETCHED from the public GitHub release (no build, nothing checked
-# in) — pin with FORESTRIE_VERSION.
+# in) — pin with FORESTRIE_VERSION (v0.15.0 or later: it waits for anchoring).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -41,7 +48,18 @@ for arg in "$@"; do
 done
 
 # --- forestrie CLI: fetched from a GitHub release (gitignored, never committed) ---
-FORESTRIE_VERSION="${FORESTRIE_VERSION:-v0.6.0}"
+FORESTRIE_VERSION="${FORESTRIE_VERSION:-v0.15.0}"
+
+# SHA-256 of the default release's binaries, checked as well as the release's
+# own sidecar, so a replaced release asset is caught. An overridden
+# FORESTRIE_VERSION is checked against its sidecar only.
+pinned_sha256() { # $1=asset
+  [ "$FORESTRIE_VERSION" = v0.15.0 ] || return 0
+  case "$1" in
+    forestrie-darwin-arm64) echo b66c822fe99671fab13efd62ce0fa75e38b5bf730b0edec8d01020579b00edfb ;;
+    forestrie-linux-x64)    echo c93bfb0de2332571d7126341b57ad2ec1768209733b513819e92e90cc2096069 ;;
+  esac
+}
 
 # Download the pinned release binary for this platform into ./forestrie, verify
 # its sha256 sidecar, and mark it executable. Idempotent: reuses an already-
@@ -72,6 +90,13 @@ fetch_forestrie() {
   if [ -z "$want" ] || [ "$want" != "$got" ]; then
     rm -f ./forestrie.download
     echo "forestrie ${FORESTRIE_VERSION} ${asset} sha256 mismatch (want ${want:-<none>}, got ${got})" >&2
+    return 1
+  fi
+  local pinned
+  pinned=$(pinned_sha256 "$asset")
+  if [ -n "$pinned" ] && [ "$pinned" != "$got" ]; then
+    rm -f ./forestrie.download
+    echo "forestrie ${FORESTRIE_VERSION} ${asset} is not the pinned build (want ${pinned}, got ${got})" >&2
     return 1
   fi
   chmod +x ./forestrie.download
@@ -199,11 +224,54 @@ step "R4 — pre-delegate root sealing to the vouched standing sealer key"
   --known-sealer-key "$KNOWN_SEALER_KEY"
 
 # --- R5: mint the self-referential root grant ---
-step "R5 — mint the self-referential root grant"
+# A root is anchored once its contract holds the genesis key, so the wait
+# returns at once; it still proves the contract is rooted at no other log.
+step "R5 — mint the self-referential root grant (and check the root is anchored)"
 ./forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
   --owner-log "$ROBERT_LOG_ID" --new-log "$ROBERT_LOG_ID" \
-  --sign-with "$ROBERT_PEM" --self-referential --out-b64 "$SHARED/root-grant.b64"
+  --sign-with "$ROBERT_PEM" --self-referential --out-b64 "$SHARED/root-grant.b64" \
+  --wait-anchored --genesis "$GENESIS" --rpc-url "$RPC_URL"
 export ROOT_GRANT_B64=$(cat "$SHARED/root-grant.b64")
+
+# --- R6: David's auth log, under Robert's root ---
+# prepare → delegate → create, as slide 6 narrates: David delegates his log's
+# sealing before its first checkpoint, and create waits until the root has
+# published a checkpoint covering the create grant.
+step "R6 — David's auth log (prepare → delegate → create, wait until anchored)"
+DAVID_AUTH_LOG_ID=$(uuidgen | tr 'A-Z' 'a-z'); export DAVID_AUTH_LOG_ID
+export AUTH_GRANT="$SHARED/auth-grant.b64"
+david_create_log() { # $@ = extra flags
+  ./forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
+    --owner-log "$ROBERT_LOG_ID" --new-log "$DAVID_AUTH_LOG_ID" --auth-log \
+    --signer-pem "$DAVID_PEM" --sign-with "$ROBERT_PEM" \
+    --parent-grant-b64 "$ROOT_GRANT_B64" --out-b64 "$AUTH_GRANT" "$@"
+}
+david_create_log --prepare
+./forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
+  --log-id "$DAVID_AUTH_LOG_ID" --sign-with "$DAVID_PEM" \
+  --known-sealer-key "$KNOWN_SEALER_KEY"
+david_create_log --wait-anchored --genesis "$GENESIS" --rpc-url "$RPC_URL"
+AUTH_GRANT_B64=$(cat "$AUTH_GRANT"); export AUTH_GRANT_B64
+
+# --- R7: Alice's data log, under David's auth log ---
+# Its create grant is registered under David's log, which canopy accepts only
+# now that David's log is anchored. Alice writes to it on slide 6.
+step "R7 — Alice's data log (prepare → delegate → create, wait until anchored)"
+ALICE_DATA_LOG_ID=$(uuidgen | tr 'A-Z' 'a-z'); export ALICE_DATA_LOG_ID
+export ALICE_GRANT="$SHARED/alice-data-grant.b64"
+alice_create_log() { # $@ = extra flags
+  ./forestrie create-log --base-url "$FORESTRIE_BASE_URL" \
+    --owner-log "$DAVID_AUTH_LOG_ID" --new-log "$ALICE_DATA_LOG_ID" \
+    --bootstrap-log "$ROBERT_LOG_ID" --data-log \
+    --signer-pem "$ALICE_PEM" --sign-with "$DAVID_PEM" \
+    --parent-grant-b64 "$AUTH_GRANT_B64" --out-b64 "$ALICE_GRANT" "$@"
+}
+alice_create_log --prepare
+./forestrie delegate --coordinator-url "$DELEGATION_COORDINATOR_URL" \
+  --log-id "$ALICE_DATA_LOG_ID" --sign-with "$ALICE_PEM" \
+  --known-sealer-key "$KNOWN_SEALER_KEY"
+alice_create_log --wait-anchored --genesis "$GENESIS" --rpc-url "$RPC_URL"
+ALICE_GRANT_B64=$(cat "$ALICE_GRANT"); export ALICE_GRANT_B64
 
 # --- write demo.env (secret-free; safe to leave on disk) ---
 step "Writing $SHARED/demo.env"
@@ -226,13 +294,20 @@ export ROBERT_LOG_ID="$ROBERT_LOG_ID"
 export DEPLOY_BLOCK="$DEPLOY_BLOCK"
 export ROOT_GRANT_B64="$ROOT_GRANT_B64"
 export GRANT_B64="$ROOT_GRANT_B64"
+export DAVID_AUTH_LOG_ID="$DAVID_AUTH_LOG_ID"
+export AUTH_GRANT="$AUTH_GRANT"
+export AUTH_GRANT_B64="$AUTH_GRANT_B64"
+export ALICE_DATA_LOG_ID="$ALICE_DATA_LOG_ID"
+export ALICE_GRANT="$ALICE_GRANT"
+export ALICE_GRANT_B64="$ALICE_GRANT_B64"
 EOF
 echo "  wrote $SHARED/demo.env"
 
 cat <<EOF
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Preflight complete. The forest is deployed, onboarded, delegated, and granted.
+Preflight complete. The forest is deployed, onboarded, delegated, and granted,
+and David's auth log and Alice's data log under it are anchored.
 
 Start the demo:
 

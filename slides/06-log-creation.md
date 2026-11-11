@@ -26,6 +26,9 @@ forestrie register --log-id "$ROBERT_LOG_ID" --grant-b64 "$ALICE_GRANT_B64" --st
 ```
 
 - Authorization is a **receipted statement**, sequenced in the auth log like any entry
+- A new log's authority counts only once **anchored**: a checkpoint its owner
+  published on chain covers its create grant. `--wait-anchored` (and
+  `forestrie log wait-anchored`) prove it from public chain data alone
 - Verification of Alice's statement → **next slide**
 
 <!--
@@ -33,6 +36,8 @@ The point to land: SCITT requires the TS to authorize what it registers; Forestr
 with SCITT — a grant is a signed statement, recorded and receipted in an auth log. Create vs write
 are different authorities: create-log makes a log; the data-log grant's grantData names its writer.
 Child registration goes to /register/{root}/entries (the forest), not the child id.
+Each level waits a minute or two for its owner's next published checkpoint, so preflight ran
+these create-log commands; on stage, `log wait-anchored` shows both logs are anchored at once.
 Don't verify here — the chain-anchored closer and the trust argument are the NEXT slide, so the
 split-view payoff gets its own beat.
 -->
