@@ -284,10 +284,6 @@ reuse_forest() {
     echo "$SHARED/demo.env is for $FORESTRIE_BASE_URL, not lane $LANE ($lane_url)" >&2
     return 1
   fi
-  # R6 and R7 make new logs. Until each does, demo.env names none, so a
-  # failure part-way never pairs a new David log with the old Alice one.
-  DAVID_AUTH_LOG_ID='' AUTH_GRANT='' AUTH_GRANT_B64=''
-  ALICE_DATA_LOG_ID='' ALICE_GRANT='' ALICE_GRANT_B64=''
   echo "  univocity=$UNIVOCITY_ADDRESS  logId=$ROBERT_LOG_ID"
 }
 
@@ -349,6 +345,11 @@ else
   FOREST_STARTED=1
   create_forest
 fi
+# R6 and R7 make new logs. Until each does, demo.env names none: values from
+# an earlier demo.env, sourced by --logs-only or by the shell that runs this,
+# must never pair with this run's forest or with each other.
+DAVID_AUTH_LOG_ID='' AUTH_GRANT='' AUTH_GRANT_B64=''
+ALICE_DATA_LOG_ID='' ALICE_GRANT='' ALICE_GRANT_B64=''
 write_demo_env
 FOREST_READY=1
 
