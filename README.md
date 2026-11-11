@@ -48,9 +48,9 @@ re-running the whole deck. Per-slide scratch lands in `.output/slide-NN/`.
 into `./forestrie` and checks it against the release's `.sha256` sidecar; a
 later run reuses the binary while it still matches. A release can land between
 rehearsal and the talk, so freeze the one you rehearsed with before
-presenting: run `./forestrie --version`, then pass that tag to every preflight
-run, e.g. `FORESTRIE_VERSION=vX.Y.Z ./preflight.sh --lane=a` (and the same for
-`--logs-only` reruns).
+presenting: run `./forestrie --version`, which prints `X.Y.Z`, then pass the tag
+`vX.Y.Z` to every preflight run, e.g. `FORESTRIE_VERSION=vX.Y.Z ./preflight.sh
+--lane=a` (and the same for `--logs-only` reruns).
 
 `DEMO_AUTO=1 ./slide-02-publishing.sh` skips every pause — that's how the
 scripts are tested unattended.
@@ -155,8 +155,9 @@ delegation bug — a univocity contract bug, now fixed in
 `_Univocity.sol` accepted an **empty** grant inclusion path only when
 `ownerLog.size == 1`. But an empty path is legitimate whenever **the grant leaf
 is itself a peak** of the owner's accumulator — exactly when it is the owner's
-last leaf and the owner's leaf count is **odd**. David's auth grant is always
-the root's last leaf, so it was a parity coin flip:
+last leaf and the owner's leaf count is **odd**. In the July deck order slide 6
+created David's log live, so his auth grant was always the root's last leaf,
+and it was a parity coin flip:
 
 | root leaves after David's grant | David's grant leaf | path | v0.1.7 |
 |---|---|---|---|
@@ -168,8 +169,9 @@ publisher logged `unpublishable checkpoint terminally acked` and **never
 retried** → Alice's data log retried `owner_not_anchored` forever → slide 7 had
 an empty accumulator to match and correctly fell back to `delegation_invalid`.
 Making the publisher retry would **not** have helped: the revert is
-deterministic until the owner grows, and this demo's root never grows after
-slide 6.
+deterministic until the owner grows, and in that order the root never grew
+after slide 6. Since 2026-11 preflight creates David's log at R6, before slides
+2 and 4 write to the root, so his grant is the root's second leaf.
 
 Confirmed fixed on v0.1.8 (2026-07-17): same deck, same order, root again at
 201 (103 leaves, odd) — David's auth log published first time, Alice's followed,
